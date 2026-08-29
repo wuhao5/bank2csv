@@ -1,6 +1,7 @@
 {
   "name": "bank2csv",
   "version": "0.1.0",
+  "packageManager": "pnpm@11.24.0",
   "description": "TypeScript Bank Statement Parser to CSV with multi-account support, balance reconciliation, and direct AI ingestion",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
