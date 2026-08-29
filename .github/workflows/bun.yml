@@ -1,4 +1,4 @@
-name: CI
+name: Bun Compatibility CI
 
 on:
   push:
@@ -11,29 +11,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Build & Test
+  test-bun:
+    name: Build & Test (Bun)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 24
-          cache: 'pnpm'
+          bun-version: latest
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install
 
       - name: Run Tests
-        run: pnpm test
+        run: bun run test
 
       - name: Run Build
-        run: pnpm build
+        run: bun run build
 
