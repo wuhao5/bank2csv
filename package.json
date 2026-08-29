@@ -1,0 +1,64 @@
+{
+  "name": "bank2csv",
+  "version": "0.1.0",
+  "description": "TypeScript Bank Statement Parser to CSV with multi-account support, balance reconciliation, and direct AI ingestion",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "bank-stmt": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "pnpm run test && pnpm run build",
+    "start": "tsx src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "bank-statement",
+    "parser",
+    "csv",
+    "chase",
+    "bofa",
+    "gemini",
+    "pdf",
+    "transactions",
+    "reconciliation"
+  ],
+  "author": "Hao Wu",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wuhao5/bank2csv.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wuhao5/bank2csv/issues"
+  },
+  "homepage": "https://github.com/wuhao5/bank2csv#readme",
+  "dependencies": {
+    "@google/genai": "^2.19.0",
+    "commander": "^12.1.0",
+    "csv-stringify": "^6.5.1",
+    "decimal.js": "^10.4.3",
+    "pdfjs-dist": "^4.10.38",
+    "tesseract.js": "^7.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
