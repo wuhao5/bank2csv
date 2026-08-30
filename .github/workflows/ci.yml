@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Build & Test
+  test-node:
+    name: Build & Test (Node 24 + pnpm)
     runs-on: ubuntu-latest
 
     steps:
@@ -37,3 +37,24 @@ jobs:
       - name: Run Build
         run: pnpm build
 
+  test-bun:
+    name: Build & Test (Bun)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run Tests
+        run: bun run test
+
+      - name: Run Build
+        run: bun run build
