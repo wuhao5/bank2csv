@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { matchesDocHints } from '../src/ingestors/rule-based/base.js';
 import { TargetRedCardParser } from '../src/ingestors/rule-based/parsers/target-redcard.js';
 import { mockTargetRedCardDocument } from './fixtures/mock-documents.js';
 
 describe('TargetRedCardParser', () => {
   const parser = new TargetRedCardParser();
 
-  it('canHandle returns true for Target RedCard statements', () => {
-    expect(parser.canHandle(mockTargetRedCardDocument)).toBe(true);
+  it('matches stringHints for Target RedCard statements', () => {
+    expect(matchesDocHints(mockTargetRedCardDocument, parser.stringHints)).toBe(true);
   });
 
   it('correctly parses Target RedCard credit card statement and reconciles balances with 0 discrepancy', () => {

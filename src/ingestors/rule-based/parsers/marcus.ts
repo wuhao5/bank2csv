@@ -12,19 +12,12 @@ export class MarcusBankParser implements BankParser {
   readonly id = 'marcus-v1';
   readonly name = 'Marcus by Goldman Sachs Statement Parser';
 
-  /**
-   * Signature detection matching Goldman Sachs / Marcus statements.
-   */
-  canHandle(doc: ExtractedPdfDocument): boolean {
-    const text = doc.fullText.toUpperCase();
-    return (
-      (text.includes('GOLDMAN SACHS') || text.includes('MARCUS.COM')) &&
-      (text.includes('ONLINE SAVINGS') ||
-        text.includes('STATEMENT SUMMARY') ||
-        text.includes('GOLDMAN SACHS BANK USA') ||
-        text.includes('EXPLORE THE MARCUS RESOURCE CENTER'))
-    );
-  }
+  readonly stringHints = [
+    'MARCUS.COM',
+    'GOLDMAN SACHS BANK USA',
+    'ONLINE SAVINGS ACCOUNT STATEMENT',
+    'EXPLORE THE MARCUS RESOURCE CENTER'
+  ] as const;
 
   parse(doc: ExtractedPdfDocument): BankStatement {
     const fullText = doc.fullText;

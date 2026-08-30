@@ -12,20 +12,13 @@ export class WellsFargoBankParser implements BankParser {
   readonly id = 'wells-fargo-v1';
   readonly name = 'Wells Fargo Statement Parser';
 
-  /**
-   * Signature detection matching Wells Fargo statements.
-   */
-  canHandle(doc: ExtractedPdfDocument): boolean {
-    const text = doc.fullText.toUpperCase();
-    return (
-      (text.includes('WELLS FARGO') || text.includes('WELLSFARGO.COM') || text.includes('1-800-TO-WELLS')) &&
-      (text.includes('TRANSACTION HISTORY') ||
-        text.includes('STATEMENT PERIOD ACTIVITY SUMMARY') ||
-        text.includes('WAY2SAVE') ||
-        text.includes('EVERYDAY CHECKING') ||
-        text.includes('WELLS FARGO BANK, N.A.'))
-    );
-  }
+  readonly stringHints = [
+    'WELLSFARGO.COM',
+    '1-800-TO-WELLS',
+    'WAY2SAVE',
+    'EVERYDAY CHECKING',
+    'WELLS FARGO BANK, N.A.'
+  ] as const;
 
   parse(doc: ExtractedPdfDocument): BankStatement {
     const fullText = doc.fullText;

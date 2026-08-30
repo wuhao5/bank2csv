@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { matchesDocHints } from '../src/ingestors/rule-based/base.js';
 import { USBankParser } from '../src/ingestors/rule-based/parsers/us-bank.js';
 import { mockUSBankCheckingDocument } from './fixtures/mock-documents.js';
 
 describe('USBankParser', () => {
   const parser = new USBankParser();
 
-  it('canHandle returns true for U.S. Bank statements', () => {
-    expect(parser.canHandle(mockUSBankCheckingDocument)).toBe(true);
+  it('matches stringHints for U.S. Bank statements', () => {
+    expect(matchesDocHints(mockUSBankCheckingDocument, parser.stringHints)).toBe(true);
   });
 
   it('correctly parses U.S. Bank checking statement and reconciles balances with 0 discrepancy', () => {

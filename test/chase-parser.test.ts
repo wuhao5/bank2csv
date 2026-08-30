@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { matchesDocHints } from '../src/ingestors/rule-based/base.js';
 import { ChaseBankParser } from '../src/ingestors/rule-based/parsers/chase.js';
 import { mockChaseCheckingDocument } from './fixtures/mock-documents.js';
 
 describe('ChaseBankParser', () => {
   const parser = new ChaseBankParser();
 
-  it('canHandle returns true for Chase statements', () => {
-    expect(parser.canHandle(mockChaseCheckingDocument)).toBe(true);
+  it('matches stringHints for Chase statements', () => {
+    expect(matchesDocHints(mockChaseCheckingDocument, parser.stringHints)).toBe(true);
   });
 
   it('correctly parses multi-account Chase statement with checking and savings', () => {

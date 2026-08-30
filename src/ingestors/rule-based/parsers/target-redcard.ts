@@ -11,22 +11,13 @@ export class TargetRedCardParser implements BankParser {
   readonly id = 'target-redcard-v1';
   readonly name = 'Target RedCard Credit Card Statement Parser';
 
-  /**
-   * Signature detection matching Target RedCard statements.
-   */
-  canHandle(doc: ExtractedPdfDocument): boolean {
-    const text = doc.fullText.toUpperCase();
-    return (
-      (text.includes('REDCARD') ||
-        text.includes('TARGET CARD SERVICES') ||
-        text.includes('TARGET.COM/MYREDCARD')) &&
-      (text.includes('TD BANK USA') ||
-        text.includes('SUMMARYOFACCOUNTACTIVITY') ||
-        text.includes('SUMMARY OF ACCOUNT ACTIVITY') ||
-        text.includes('MANAGE MY REDCARD') ||
-        text.includes('MANAGEMYREDCARD'))
-    );
-  }
+  readonly stringHints = [
+    'REDCARD',
+    'TARGET CARD SERVICES',
+    'TARGET.COM/MYREDCARD',
+    'MANAGE MY REDCARD',
+    'MANAGEMYREDCARD'
+  ] as const;
 
   parse(doc: ExtractedPdfDocument): BankStatement {
     const fullText = doc.fullText;

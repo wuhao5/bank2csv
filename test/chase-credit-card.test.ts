@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { matchesDocHints } from '../src/ingestors/rule-based/base.js';
 import { ChaseCreditCardParser } from '../src/ingestors/rule-based/parsers/chase-credit-card.js';
 import {
   mockChaseCreditCardPersonalDocument,
@@ -9,7 +10,7 @@ describe('ChaseCreditCardParser', () => {
   const parser = new ChaseCreditCardParser();
 
   it('parses personal credit card statement with purchases and 100% balance reconciliation', () => {
-    expect(parser.canHandle(mockChaseCreditCardPersonalDocument)).toBe(true);
+    expect(matchesDocHints(mockChaseCreditCardPersonalDocument, parser.stringHints)).toBe(true);
     const result = parser.parse(mockChaseCreditCardPersonalDocument);
 
     expect(result.institution).toBe('JPMorgan Chase Bank, N.A.');
@@ -45,7 +46,7 @@ describe('ChaseCreditCardParser', () => {
   });
 
   it('parses Chase Business Credit Card statement with multi-cardholder sub-account segmentation', () => {
-    expect(parser.canHandle(mockChaseCreditCardBusinessDocument)).toBe(true);
+    expect(matchesDocHints(mockChaseCreditCardBusinessDocument, parser.stringHints)).toBe(true);
     const result = parser.parse(mockChaseCreditCardBusinessDocument);
 
     expect(result.institution).toBe('JPMorgan Chase Bank, N.A.');

@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { matchesDocHints } from '../src/ingestors/rule-based/base.js';
 import { AllyBankParser } from '../src/ingestors/rule-based/parsers/ally.js';
 import { mockAllyStatementDocument } from './fixtures/mock-documents.js';
 
 describe('AllyBankParser', () => {
   const parser = new AllyBankParser();
 
-  it('canHandle returns true for Ally Bank statements', () => {
-    expect(parser.canHandle(mockAllyStatementDocument)).toBe(true);
+  it('matches stringHints for Ally Bank statements', () => {
+    expect(matchesDocHints(mockAllyStatementDocument, parser.stringHints)).toBe(true);
   });
 
   it('correctly parses multi-account Ally statement with checking and savings', () => {

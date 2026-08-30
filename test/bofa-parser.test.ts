@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { matchesDocHints } from '../src/ingestors/rule-based/base.js';
 import { BofABankParser } from '../src/ingestors/rule-based/parsers/bofa.js';
 import { mockBofADocument } from './fixtures/mock-documents.js';
 
 describe('BofABankParser', () => {
   const parser = new BofABankParser();
 
-  it('canHandle returns true for Bank of America statements', () => {
-    expect(parser.canHandle(mockBofADocument)).toBe(true);
+  it('matches stringHints for Bank of America statements', () => {
+    expect(matchesDocHints(mockBofADocument, parser.stringHints)).toBe(true);
   });
 
   it('correctly parses Bank of America statement across sub-tables', () => {

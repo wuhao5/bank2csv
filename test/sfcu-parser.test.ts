@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { matchesDocHints } from '../src/ingestors/rule-based/base.js';
 import { SFCUBankParser } from '../src/ingestors/rule-based/parsers/sfcu.js';
 import { mockSFCUDocument } from './fixtures/mock-documents.js';
 
 describe('SFCUBankParser', () => {
   const parser = new SFCUBankParser();
 
-  it('canHandle returns true for SFCU statements', () => {
-    expect(parser.canHandle(mockSFCUDocument)).toBe(true);
+  it('matches stringHints for SFCU statements', () => {
+    expect(matchesDocHints(mockSFCUDocument, parser.stringHints)).toBe(true);
   });
 
   it('correctly parses multi-account SFCU statement (Checking and Loan) and reconciles balances with 0 discrepancy', () => {

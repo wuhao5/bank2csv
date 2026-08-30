@@ -10,15 +10,13 @@ export class BofABankParser implements BankParser {
   readonly id = 'bofa-v1';
   readonly name = 'Bank of America Statement Parser';
 
-  canHandle(doc: ExtractedPdfDocument): boolean {
-    const text = doc.fullText.toUpperCase();
-    return (
-      (text.includes('BANK OF AMERICA') || text.includes('BANKOFAMERICA.COM')) &&
-      (text.includes('YOUR ADV PLUS BANKING') ||
-        text.includes('ACCOUNT SUMMARY') ||
-        text.includes('BANK DEPOSIT ACCOUNTS'))
-    );
-  }
+  readonly stringHints = [
+    'BANK OF AMERICA',
+    'BANKOFAMERICA.COM',
+    'BOFA.COM',
+    'YOUR ADV PLUS BANKING',
+    'BANK DEPOSIT ACCOUNTS'
+  ] as const;
 
   parse(doc: ExtractedPdfDocument): BankStatement {
     const fullText = doc.fullText;

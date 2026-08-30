@@ -12,21 +12,14 @@ export class USBankParser implements BankParser {
   readonly id = 'us-bank-v1';
   readonly name = 'U.S. Bank Statement Parser';
 
-  /**
-   * Signature detection matching U.S. Bank statements.
-   */
-  canHandle(doc: ExtractedPdfDocument): boolean {
-    const text = doc.fullText.toUpperCase();
-    return (
-      (text.includes('U.S. BANK') || text.includes('USBANK.COM') || text.includes('US BANK')) &&
-      (text.includes('UNI- STATEMENT') ||
-        text.includes('UNI-STATEMENT') ||
-        text.includes('PLATINUM CHECKING') ||
-        text.includes('U.S. BANK NATIONAL ASSOCIATION') ||
-        text.includes('BALANCE YOUR ACCOUNT') ||
-        text.includes('WEALTH MANAGEMENT'))
-    );
-  }
+  readonly stringHints = [
+    'USBANK.COM',
+    '800-USBANKS',
+    'UNI- STATEMENT',
+    'UNI-STATEMENT',
+    'PLATINUM CHECKING',
+    'U.S. BANK NATIONAL ASSOCIATION'
+  ] as const;
 
   parse(doc: ExtractedPdfDocument): BankStatement {
     const fullText = doc.fullText;

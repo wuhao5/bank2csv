@@ -11,21 +11,15 @@ export class ChaseCreditCardParser implements BankParser {
   readonly id = 'chase-credit-card-v1';
   readonly name = 'JPMorgan Chase Credit Card Parser';
 
-  canHandle(doc: ExtractedPdfDocument): boolean {
-    const text = doc.fullText.toUpperCase();
-    const isChase = /\bCHASE\b/.test(text) || /\bJPMORGAN\b/.test(text);
-    return (
-      isChase &&
-      (text.includes('CARDHELP') ||
-        text.includes('CHASE FREEDOM') ||
-        text.includes('CHASE SAPPHIRE') ||
-        text.includes('CHASE INK') ||
-        text.includes('CHASE CARD SERVICES') ||
-        text.includes('CHASE ULTIMATE REWARDS') ||
-        (text.includes('OPENING/CLOSING DATE') &&
-          (text.includes('CREDIT LIMIT') || text.includes('REVOLVING CREDIT AMOUNT'))))
-    );
-  }
+  readonly stringHints = [
+    'CARDHELP',
+    'CHASE FREEDOM',
+    'CHASE SAPPHIRE',
+    'CHASE INK',
+    'CHASE CARD SERVICES',
+    'CHASE ULTIMATE REWARDS',
+    /CHASE[\s\S]*?OPENING\/CLOSING DATE/i
+  ] as const;
 
   parse(doc: ExtractedPdfDocument): BankStatement {
     const fullText = doc.fullText;

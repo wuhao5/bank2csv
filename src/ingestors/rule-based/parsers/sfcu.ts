@@ -12,17 +12,11 @@ export class SFCUBankParser implements BankParser {
   readonly id = 'sfcu-v1';
   readonly name = 'Stanford Federal Credit Union Statement Parser';
 
-  /**
-   * Signature detection matching Stanford Federal Credit Union statements.
-   */
-  canHandle(doc: ExtractedPdfDocument): boolean {
-    const text = doc.fullText.toUpperCase();
-    return (
-      text.includes('STANFORD FEDERAL CREDIT UNION') ||
-      text.includes('SFCU.ORG') ||
-      (text.includes('MEMBER NUMBER:') && text.includes('DIVIDEND PERIOD:'))
-    );
-  }
+  readonly stringHints = [
+    'STANFORD FEDERAL CREDIT UNION',
+    'SFCU.ORG',
+    /MEMBER NUMBER:[\s\S]*?DIVIDEND PERIOD:/i
+  ] as const;
 
   parse(doc: ExtractedPdfDocument): BankStatement {
     const fullText = doc.fullText;

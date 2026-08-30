@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { matchesDocHints } from '../src/ingestors/rule-based/base.js';
 import { WellsFargoBankParser } from '../src/ingestors/rule-based/parsers/wells-fargo.js';
 import {
   mockWellsFargoCheckingDocument,
@@ -8,9 +9,9 @@ import {
 describe('WellsFargoBankParser', () => {
   const parser = new WellsFargoBankParser();
 
-  it('canHandle returns true for Wells Fargo statements', () => {
-    expect(parser.canHandle(mockWellsFargoCheckingDocument)).toBe(true);
-    expect(parser.canHandle(mockWellsFargoSavingsDocument)).toBe(true);
+  it('matches stringHints for Wells Fargo statements', () => {
+    expect(matchesDocHints(mockWellsFargoCheckingDocument, parser.stringHints)).toBe(true);
+    expect(matchesDocHints(mockWellsFargoSavingsDocument, parser.stringHints)).toBe(true);
   });
 
   it('correctly parses Wells Fargo checking statement and reconciles balances with 0 discrepancy', () => {

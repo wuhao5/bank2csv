@@ -1,4 +1,4 @@
-import type { BankParser } from './base.js';
+import { matchesDocHints, type BankParser } from './base.js';
 import type { BankStatement, ExtractedPdfDocument } from '../../core/types.js';
 import { ChaseBankParser } from './parsers/chase.js';
 import { ChaseCreditCardParser } from './parsers/chase-credit-card.js';
@@ -44,10 +44,12 @@ export class BankRouter {
   }
 
   /**
-   * Finds the matching parser for the extracted PDF document.
+   * Finds the matching parser for the extracted PDF document by evaluating stringHints
+   * centrally at the router level.
    */
   findMatchingParser(doc: ExtractedPdfDocument): BankParser | undefined {
-    return this.parsers.find((p) => p.canHandle(doc));
+    const precomputedUpper = doc.fullText.toUpperCase();
+    return this.parsers.find((p) => matchesDocHints(doc, p.stringHints, precomputedUpper));
   }
 
   /**

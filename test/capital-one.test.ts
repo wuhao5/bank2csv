@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { matchesDocHints } from '../src/ingestors/rule-based/base.js';
 import { CapitalOneCreditCardParser } from '../src/ingestors/rule-based/parsers/capital-one.js';
 import { mockCapitalOneCreditCardDocument } from './fixtures/mock-documents.js';
 
 describe('CapitalOneCreditCardParser', () => {
   const parser = new CapitalOneCreditCardParser();
 
-  it('canHandle returns true for Capital One credit card statements', () => {
-    expect(parser.canHandle(mockCapitalOneCreditCardDocument)).toBe(true);
+  it('matches stringHints for Capital One credit card statements', () => {
+    expect(matchesDocHints(mockCapitalOneCreditCardDocument, parser.stringHints)).toBe(true);
   });
 
   it('correctly parses Capital One multi-cardholder credit card statement', () => {

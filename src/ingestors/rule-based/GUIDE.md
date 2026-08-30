@@ -12,12 +12,17 @@ Every parser must implement the `BankParser` interface:
 
 ```typescript
 export interface BankParser {
-  readonly id: string;            // e.g. "wells-fargo-v1", "citi-v1"
-  readonly name: string;          // Human-readable bank name
-  canHandle(doc: ExtractedPdfDocument): boolean;
+  readonly id: string;                                // e.g. "wells-fargo-v1", "citi-v1"
+  readonly name: string;                              // Human-readable bank name
+  readonly stringHints: readonly (string | RegExp)[]; // Fast institutional signature markers
   parse(doc: ExtractedPdfDocument): BankStatement;
 }
 ```
+
+### Fast Centralized Routing with `matchesDocHints`
+To avoid repeatedly performing expensive full-text searches or case conversions across dozens of parsers, the router (`BankRouter`) centrally evaluates `stringHints` (string literals or regular expressions) against the document using `matchesDocHints`:
+- Strings are matched case-insensitively against precomputed uppercase text.
+- RegExps are evaluated against the document text.
 
 ---
 
@@ -44,7 +49,7 @@ inspect();
 ```
 
 Key questions to answer from inspection:
-1. **Bank Identification**: What unique strings/headers appear (e.g. `Wells Fargo Bank, N.A.`, `Citibank`, `citi.com`)?
+1. **Bank Identification**: What unique strings/headers appear (e.g. `WELLSFARGO.COM`, `877-247-ALLY`, `CITI.COM`)? Define them in `stringHints`.
 2. **Account Structure**: Does the statement contain multiple accounts (e.g., Checking + Savings summary) or a single account?
 3. **Period & Date Format**: Are dates `MM/DD/YYYY`, `MM/DD/YY`, or `MM/DD`? (If `MM/DD`, extract statement years to infer full ISO dates).
 4. **Table Layout**:
@@ -74,12 +79,13 @@ export class YourBankParser implements BankParser {
   readonly name = 'Your Bank Statement Parser';
 
   /**
-   * Fast signature detection matching unique institutional markers.
+   * Fast signature hints matching unique institutional markers.
    */
-  canHandle(doc: ExtractedPdfDocument): boolean {
-    const text = doc.fullText.toUpperCase();
-    return text.includes('YOUR BANK NAME') || text.includes('YOURBANK.COM');
-  }
+  readonly stringHints = [
+    'YOURBANK.COM',
+    '1-800-YOUR-BANK',
+    'YOUR BANK NAME, N.A.'
+  ] as const;
 
   parse(doc: ExtractedPdfDocument): BankStatement {
     const fullText = doc.fullText;
@@ -167,14 +173,15 @@ Create a unit test validating parsing and 100% balance reconciliation using mock
 
 ```typescript
 import { describe, it, expect } from 'vitest';
+import { matchesDocHints } from '../src/ingestors/rule-based/base.js';
 import { YourBankParser } from '../src/ingestors/rule-based/parsers/yourbank.js';
 import { mockYourBankDocument } from './fixtures/mock-documents.js';
 
 describe('YourBankParser', () => {
   const parser = new YourBankParser();
 
-  it('canHandle returns true for Your Bank statements', () => {
-    expect(parser.canHandle(mockYourBankDocument)).toBe(true);
+  it('matches stringHints for Your Bank statements', () => {
+    expect(matchesDocHints(mockYourBankDocument, parser.stringHints)).toBe(true);
   });
 
   it('correctly parses statement and reconciles balances with 0 discrepancy', () => {
@@ -199,7 +206,9 @@ describe('YourBankParser', () => {
 2. **Transaction Signs**:
    - Deposits / Income / Credits must have `type: 'CREDIT'` and **positive** `amount`.
    - Expenses / Debits / Withdrawals / Fees / Checks must have `type: 'DEBIT'` and **negative** `amount`.
-3. **Multi-Line Continuations**:
+3. **Institutional Markers in stringHints / RegExps**:
+   Ensure common payee words (like `PURCHASE` matching `CHASE` or merchant names like `CAPITAL ONE` or transfer recipient `ALLY BANK`) do not cause false-positive router matches. Use institutional URLs, phone numbers, or word boundaries `/\b...\b/`.
+4. **Multi-Line Continuations**:
    When parsing multi-line transaction descriptions, keep an active accumulator object until the next line matching a date pattern is encountered.
-4. **Year Boundaries (December to January)**:
+5. **Year Boundaries (December to January)**:
    If a statement spans `Dec 15, 2025` to `Jan 14, 2026`, ensure transactions with month `12` get year `2025` and month `01` get year `2026`.

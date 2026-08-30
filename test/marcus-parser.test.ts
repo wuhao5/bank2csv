@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
+import { matchesDocHints } from '../src/ingestors/rule-based/base.js';
 import { MarcusBankParser } from '../src/ingestors/rule-based/parsers/marcus.js';
 import { mockMarcusDocument } from './fixtures/mock-documents.js';
 
 describe('MarcusBankParser', () => {
   const parser = new MarcusBankParser();
 
-  it('canHandle returns true for Marcus / Goldman Sachs statements', () => {
-    expect(parser.canHandle(mockMarcusDocument)).toBe(true);
+  it('matches stringHints for Marcus / Goldman Sachs statements', () => {
+    expect(matchesDocHints(mockMarcusDocument, parser.stringHints)).toBe(true);
   });
 
   it('correctly parses Marcus statement and reconciles balances with 0 discrepancy', () => {

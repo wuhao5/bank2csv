@@ -10,16 +10,12 @@ export class ChaseBankParser implements BankParser {
   readonly id = 'chase-v1';
   readonly name = 'JPMorgan Chase Consolidated Statement Parser';
 
-  canHandle(doc: ExtractedPdfDocument): boolean {
-    const text = doc.fullText.toUpperCase();
-    const isChase = /\bCHASE\b/.test(text) || /\bJPMORGAN\b/.test(text);
-    return (
-      isChase &&
-      (text.includes('CONSOLIDATED BALANCE SUMMARY') ||
-        text.includes('CHASE TOTAL CHECKING') ||
-        text.includes('CHECKING SUMMARY'))
-    );
-  }
+  readonly stringHints = [
+    'CONSOLIDATED BALANCE SUMMARY',
+    'CHASE TOTAL CHECKING',
+    'CHECKING SUMMARY',
+    /\b(CHASE|JPMORGAN)\b[\s\S]*?(?:CONSOLIDATED BALANCE SUMMARY|CHASE TOTAL CHECKING|CHECKING SUMMARY)/i
+  ] as const;
 
   parse(doc: ExtractedPdfDocument): BankStatement {
     const fullText = doc.fullText;

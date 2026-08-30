@@ -12,20 +12,13 @@ export class AllyBankParser implements BankParser {
   readonly id = 'ally-v1';
   readonly name = 'Ally Bank Statement Parser';
 
-  /**
-   * Fast signature detection matching unique institutional markers.
-   */
-  canHandle(doc: ExtractedPdfDocument): boolean {
-    const text = doc.fullText.toUpperCase();
-    return (
-      (text.includes('ALLY BANK') || text.includes('ALLY.COM') || text.includes('877-247-ALLY')) &&
-      (text.includes('COMBINED CUSTOMER STATEMENT') ||
-        text.includes('COMBINED CUST OMER ST AT EMENT') ||
-        text.includes('ONLINE SAVINGS ACCOUNT') ||
-        text.includes('INTEREST CHECKING') ||
-        text.includes('CUSTOMER STATEMENT'))
-    );
-  }
+  readonly stringHints = [
+    '877-247-ALLY',
+    'WWW.ALLY.COM',
+    'COMBINED CUSTOMER STATEMENT',
+    'COMBINED CUST OMER ST AT EMENT',
+    'ALLY BANK MEMBER FDIC'
+  ] as const;
 
   parse(doc: ExtractedPdfDocument): BankStatement {
     // 1. Extract Statement Period & Dates
