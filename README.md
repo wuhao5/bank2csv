@@ -33,17 +33,18 @@ pnpm build
 
 ### Parse statements in a directory or single file:
 ```bash
-# Parse all PDFs/images in a directory and generate unified CSVs
+# Parse all PDFs/images in a directory (generates one CSV per statement file)
 pnpm start parse ./samples --output ./out
+
+# Combine all parsed statements into a single unified CSV file
+pnpm start parse ./samples --output ./out -u
+pnpm start parse ./samples --output ./out --unified all_transactions.csv
 
 # Recursively search all subdirectories for statement files
 pnpm start parse ./samples -d --output ./out
 
 # Search with limited depth (e.g. 1 subdirectory level)
 pnpm start parse ./samples --depth 1 --output ./out
-
-# Split multi-account statements into individual per-account CSVs
-pnpm start parse ./samples --output ./out --split
 
 # Use local Tesseract.js OCR for image-based statements
 pnpm start parse ./samples --output ./out --ocr
@@ -61,7 +62,7 @@ pnpm start parse ./samples --output ./out --ai
 | :--- | :--- | :--- |
 | `-o, --output <dir>` | Directory to save generated CSV files | `./output` |
 | `-p, --preset <preset>` | CSV format: `standard` \| `ynab` \| `quickbooks` | `standard` |
-| `-s, --split` | Generate separate CSV files for each bank account | `false` |
+| `-u, --unified [file]` | Combine all transactions across statements into one unified CSV | `undefined` (one CSV per statement file) |
 | `-d, --depth [number]` | Search subdirectories (`-d` for unlimited depth, or specify number e.g. `--depth 1`) | `0` (top-level only) |
 | `--ocr` | Run local Tesseract.js OCR on scanned image statements | `false` |
 | `--ai` | Use Direct Multimodal AI Ingestion | `false` |
@@ -72,7 +73,7 @@ pnpm start parse ./samples --output ./out --ai
 ## Programmatic API
 
 ```typescript
-import { parseStatement, exportToUnifiedCsv, exportToSplitCsv } from 'bank-stmt';
+import { parseStatement, exportToUnifiedCsv } from 'bank-stmt';
 import fs from 'fs';
 
 const pdfBuffer = fs.readFileSync('statement.pdf');
@@ -85,7 +86,6 @@ console.log(statement.accounts[0].reconciliation?.isBalanced); // true
 
 // 2. Export to CSV
 const csv = exportToUnifiedCsv(statement, 'standard');
-const splitCsvs = exportToSplitCsv(statement, 'ynab');
 ```
 
 ---

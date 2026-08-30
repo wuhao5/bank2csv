@@ -6,7 +6,6 @@ import { extractDocumentFromImages, extractTextFromImage, isScannedOrImageOnly }
 import { defaultRouter, BankRouter } from './ingestors/rule-based/router.js';
 import { parseStatementWithGemini, type GeminiIngestorOptions } from './ingestors/ai-direct/gemini.js';
 import { exportToUnifiedCsv } from './exporters/csv-unified.js';
-import { exportToSplitCsv, type SplitCsvOutput } from './exporters/csv-split.js';
 
 export * from './core/types.js';
 export * from './core/reconciler.js';
@@ -21,7 +20,6 @@ export * from './ingestors/rule-based/parsers/bofa.js';
 export * from './ingestors/rule-based/parsers/capital-one.js';
 export * from './ingestors/ai-direct/gemini.js';
 export * from './exporters/csv-unified.js';
-export * from './exporters/csv-split.js';
 export * from './exporters/presets.js';
 
 export interface ParseOptions {
@@ -72,15 +70,12 @@ export async function parseStatement(
 }
 
 /**
- * Convenience helper to parse a bank statement and directly export to CSV string(s).
+ * Convenience helper to parse a bank statement and directly export to a CSV string.
  */
 export async function convertStatementToCsv(
   input: string | Buffer | Uint8Array,
-  options: ParseOptions & { split?: boolean; preset?: CsvPreset } = {}
-): Promise<string | SplitCsvOutput[]> {
+  options: ParseOptions & { preset?: CsvPreset } = {}
+): Promise<string> {
   const statement = await parseStatement(input, options);
-  if (options.split) {
-    return exportToSplitCsv(statement, options.preset);
-  }
   return exportToUnifiedCsv(statement, options.preset);
 }

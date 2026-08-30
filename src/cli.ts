@@ -3,8 +3,7 @@ import { Command, Option, InvalidArgumentError } from 'commander';
 import fs from 'fs';
 import path from 'path';
 import { parseStatement, terminateOcrWorker, collectFiles } from './index.js';
-import { exportToUnifiedCsv } from './exporters/csv-unified.js';
-import { exportToSplitCsv } from './exporters/csv-split.js';
+import { StatementCsvWriter } from './exporters/csv-unified.js';
 import type { CsvPreset } from './core/types.js';
 
 const program = new Command();
@@ -24,7 +23,12 @@ program
       .choices(['standard', 'ynab', 'quickbooks'])
       .default('standard')
   )
-  .option('-s, --split', 'Generate separate CSV files for each bank account in multi-account statements', false)
+  .addOption(
+    new Option(
+      '-u, --unified [filename]',
+      'Combine all transactions across statements into a single unified CSV file (default: unified.csv)'
+    ).preset('unified.csv')
+  )
   .addOption(
     new Option(
       '-d, --depth [number]',
@@ -44,6 +48,8 @@ program
   .option('--ai', 'Use Direct Multimodal AI Ingestion (requires GEMINI_API_KEY)', false)
   .option('-v, --verbose', 'Print verbose debug & reconciliation logs', false)
   .action(async (targetPath: string, options: any) => {
+    let unifiedWriter: StatementCsvWriter | null = null;
+    let unifiedOutPath = '';
     try {
       const isDir = fs.existsSync(targetPath) && fs.statSync(targetPath).isDirectory();
       const filesToProcess: string[] = [];
@@ -67,8 +73,21 @@ program
       const outputDir = path.resolve(options.output);
       fs.mkdirSync(outputDir, { recursive: true });
 
+      const preset = options.preset as CsvPreset;
       const mode = options.ai ? 'AI-Direct' : options.ocr ? 'Tesseract-OCR' : 'Rule-Based';
-      console.log(`Processing ${filesToProcess.length} statement(s)... Preset: [${options.preset}] Mode: [${mode}]\n`);
+      console.log(`Processing ${filesToProcess.length} statement(s)... Preset: [${preset}] Mode: [${mode}]\n`);
+
+      if (options.unified) {
+        const rawName =
+          typeof options.unified === 'string' && options.unified.trim()
+            ? options.unified.trim()
+            : 'unified.csv';
+        const unifiedFilename = rawName.toLowerCase().endsWith('.csv') ? rawName : `${rawName}.csv`;
+        unifiedOutPath = path.isAbsolute(unifiedFilename)
+          ? unifiedFilename
+          : path.join(outputDir, unifiedFilename);
+        unifiedWriter = new StatementCsvWriter(unifiedOutPath, preset);
+      }
 
       for (const filePath of filesToProcess) {
         const filename = path.basename(filePath);
@@ -97,28 +116,31 @@ program
           }
         }
 
-        const preset = options.preset as CsvPreset;
-
-        if (options.split) {
-          const splitOutputs = exportToSplitCsv(statement, preset);
-          for (const item of splitOutputs) {
-            const outPath = path.join(outputDir, item.suggestedFilename);
-            fs.writeFileSync(outPath, item.csvContent, 'utf-8');
-            console.log(`   💾 Exported Account CSV: ${path.relative(process.cwd(), outPath)}`);
-          }
+        if (unifiedWriter) {
+          const txCount = unifiedWriter.writeStatement(statement);
+          console.log(`   💾 Streamed ${txCount} transaction(s) to unified CSV`);
         } else {
-          const csvContent = exportToUnifiedCsv(statement, preset);
           const baseName = path.parse(filename).name;
           const outPath = path.join(outputDir, `${baseName}.csv`);
-          fs.writeFileSync(outPath, csvContent, 'utf-8');
-          console.log(`   💾 Exported Unified CSV: ${path.relative(process.cwd(), outPath)}`);
+          const writer = new StatementCsvWriter(outPath, preset);
+          writer.writeStatement(statement);
+          await writer.finish();
+          console.log(`   💾 Exported Statement CSV: ${path.relative(process.cwd(), outPath)}`);
         }
         console.log('');
+      }
+
+      if (unifiedWriter) {
+        const totalTx = await unifiedWriter.finish();
+        console.log(`💾 Finalized Combined Unified CSV (${filesToProcess.length} statement(s), ${totalTx} transactions): ${path.relative(process.cwd(), unifiedOutPath)}\n`);
       }
 
       await terminateOcrWorker();
       console.log(`🎉 All statements successfully processed and saved to ${outputDir}`);
     } catch (err: any) {
+      if (unifiedWriter) {
+        unifiedWriter.close();
+      }
       await terminateOcrWorker();
       console.error(`\n❌ Error:`, err.message || err);
       process.exit(1);
