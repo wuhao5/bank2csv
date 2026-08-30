@@ -35,7 +35,7 @@ export class ChaseCreditCardParser implements BankParser {
     // 2. Extract Product & Account Info
     const account = this.extractAccountSummary(fullText, doc);
 
-    // 3. Extract Transactions across all pages
+    // 3. Extract Transactions across all pages with multi-cardholder segmentation
     this.extractTransactions(doc, account, startYear, endYear);
 
     const reconciledAccounts = reconcileStatementAccounts([account]);
@@ -135,26 +135,54 @@ export class ChaseCreditCardParser implements BankParser {
   ): void {
     let inTxSection = false;
     let sectionType: 'PAYMENTS' | 'PURCHASES' | 'FEES' | 'INTEREST' = 'PURCHASES';
+    const pendingTransactions: BankTransaction[] = [];
+    let previousLine = '';
 
     for (const page of doc.pages) {
       for (const line of page.lines) {
-        if (line.includes('ACCOUNT ACTIVITY') || line.includes('TRANSACTIONS')) {
+        // Check for Cardholder cycle end block FIRST
+        // Format:
+        // "CARDHOLDER NAME"
+        // "TRANSACTIONS THIS CYCLE (CARD XXXX) $1234.56"
+        const cardCycleMatch = line.match(/TRANSACTIONS THIS CYCLE\s*\(CARD\s*(\d{4})\)/i);
+        if (cardCycleMatch) {
+          const cardNum = cardCycleMatch[1];
+          const cardholderName = previousLine.trim();
+
+          for (const tx of pendingTransactions) {
+            const prefix = cardholderName ? `[${cardholderName} #${cardNum}] ` : `[CARD #${cardNum}] `;
+            tx.description = `${prefix}${tx.description}`;
+            tx.category = `Cardholder: ${cardholderName || 'Card'} #${cardNum}`;
+          }
+
+          account.transactions.push(...pendingTransactions);
+          pendingTransactions.length = 0;
+          previousLine = line;
+          continue;
+        }
+
+        if (line.includes('ACCOUNT ACTIVITY') || line.trim() === 'TRANSACTIONS') {
           inTxSection = true;
+          previousLine = line;
           continue;
         }
 
         if (inTxSection) {
           if (line.includes('PAYMENTS AND OTHER CREDITS') || line.trim() === 'PAYMENTS') {
             sectionType = 'PAYMENTS';
+            previousLine = line;
             continue;
           } else if (line.includes('PURCHASE') || line.includes('PURCHASES')) {
             sectionType = 'PURCHASES';
+            previousLine = line;
             continue;
           } else if (line.includes('FEES CHARGED')) {
             sectionType = 'FEES';
+            previousLine = line;
             continue;
           } else if (line.includes('INTEREST CHARGED')) {
             sectionType = 'INTEREST';
+            previousLine = line;
             continue;
           }
 
@@ -166,6 +194,7 @@ export class ChaseCreditCardParser implements BankParser {
             line.includes('Page 3 of 3')
           ) {
             inTxSection = false;
+            previousLine = line;
             continue;
           }
 
@@ -173,15 +202,15 @@ export class ChaseCreditCardParser implements BankParser {
             line.startsWith('Date of') ||
             line.startsWith('Merchant Name') ||
             line.startsWith('Trans Date') ||
-            line.includes('TRANSACTIONS THIS CYCLE') ||
             line.includes('INCLUDING PAYMENTS RECEIVED')
           ) {
+            previousLine = line;
             continue;
           }
 
-          // Format: "07/12 99 RANCH #1772 MOUNTAIN VIEW CA 12.93"
-          // Format: "08/06 AUTOMATIC PAYMENT - THANK YOU -3,337.94"
-          // Format: "07/15 07/16 MERCHANT NAME 25.00"
+          // Format: "MM/DD MERCHANT NAME AMOUNT"
+          // Format: "MM/DD AUTOMATIC PAYMENT - THANK YOU -123.45"
+          // Format: "MM/DD MM/DD MERCHANT NAME AMOUNT"
           const txMatch = line.match(/^(\d{2}\/\d{2})(?:\s+(\d{2}\/\d{2}))?\s+(.+?)\s+([-\$\s]*[\d,]+\.\d{2})$/);
           if (txMatch) {
             const [, transDate, postDate, desc, amtStr] = txMatch;
@@ -200,7 +229,7 @@ export class ChaseCreditCardParser implements BankParser {
 
             const signedAmt = isPayment ? rawAmt : -rawAmt;
 
-            account.transactions.push({
+            pendingTransactions.push({
               date: isoDate,
               postDate: postDate ? `${year}-${postDate.replace('/', '-')}` : undefined,
               description: desc.trim(),
@@ -210,8 +239,15 @@ export class ChaseCreditCardParser implements BankParser {
               category: sectionType !== 'PURCHASES' ? sectionType : undefined
             });
           }
+
+          previousLine = line;
         }
       }
+    }
+
+    // Push any remaining transactions (e.g. for personal cards without sub-account summaries)
+    if (pendingTransactions.length > 0) {
+      account.transactions.push(...pendingTransactions);
     }
   }
 

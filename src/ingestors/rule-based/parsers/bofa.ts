@@ -3,8 +3,7 @@ import type {
   BankStatement,
   BankAccount,
   BankTransaction,
-  ExtractedPdfDocument,
-  AccountType
+  ExtractedPdfDocument
 } from '../../../core/types.js';
 import { reconcileStatementAccounts } from '../../../core/reconciler.js';
 
@@ -15,24 +14,24 @@ export class BofABankParser implements BankParser {
   canHandle(doc: ExtractedPdfDocument): boolean {
     const text = doc.fullText.toUpperCase();
     return (
-      (text.includes('BANK OF AMERICA') || text.includes('BOFA REWARDS') || text.includes('BANKOFAMERICA.COM')) &&
-      (text.includes('ACCOUNT SUMMARY') || text.includes('ADV PLUS BANKING') || text.includes('DEPOSITS AND OTHER ADDITIONS'))
+      (text.includes('BANK OF AMERICA') || text.includes('BANKOFAMERICA.COM')) &&
+      (text.includes('YOUR ADV PLUS BANKING') ||
+        text.includes('ACCOUNT SUMMARY') ||
+        text.includes('BANK DEPOSIT ACCOUNTS'))
     );
   }
 
   parse(doc: ExtractedPdfDocument): BankStatement {
     const fullText = doc.fullText;
 
-    // 1. Extract Period
-    const { periodStart, periodEnd } = this.extractPeriod(fullText);
+    // 1. Extract Statement Period
+    const { periodStart, periodEnd, startYear, endYear } = this.extractPeriod(fullText);
 
-    // 2. Extract Account Metadata & Summary Balances
-    const account = this.extractAccountSummary(fullText);
+    // 2. Extract Account Summary & Balances
+    const account = this.extractAccountSummary(fullText, doc);
 
-    // 3. Extract Transactions across sections
-    this.extractDeposits(doc, account);
-    this.extractWithdrawals(doc, account);
-    this.extractChecks(doc, account);
+    // 3. Extract Transactions across subtables
+    this.extractTransactions(doc, account, startYear, endYear);
 
     const reconciledAccounts = reconcileStatementAccounts([account]);
 
@@ -47,55 +46,80 @@ export class BofABankParser implements BankParser {
     };
   }
 
-  private extractPeriod(text: string): { periodStart?: string; periodEnd?: string } {
-    // Example: "for July 1, 2026 to July 31, 2026"
-    const periodMatch = text.match(/for\s+([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})\s+to\s+([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})/i);
+  private extractPeriod(text: string): {
+    periodStart?: string;
+    periodEnd?: string;
+    startYear: number;
+    endYear: number;
+  } {
+    const currentYear = new Date().getFullYear();
+    // Pattern: "for July 1, 2026 to July 31, 2026"
+    const periodMatch = text.match(
+      /for\s+([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})\s+to\s+([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})/i
+    );
+
     if (periodMatch) {
-      const [, startMStr, startD, startY, endMStr, endD, endY] = periodMatch;
-      const startM = this.monthNameToNumber(startMStr);
-      const endM = this.monthNameToNumber(endMStr);
+      const [, smStr, sd, sy, emStr, ed, ey] = periodMatch;
+      const startM = this.monthNameToNumber(smStr);
+      const endM = this.monthNameToNumber(emStr);
+      const startYearNum = parseInt(sy, 10);
+      const endYearNum = parseInt(ey, 10);
+
       return {
-        periodStart: `${startY}-${startM.padStart(2, '0')}-${startD.padStart(2, '0')}`,
-        periodEnd: `${endY}-${endM.padStart(2, '0')}-${endD.padStart(2, '0')}`
+        periodStart: `${startYearNum}-${startM.padStart(2, '0')}-${sd.padStart(2, '0')}`,
+        periodEnd: `${endYearNum}-${endM.padStart(2, '0')}-${ed.padStart(2, '0')}`,
+        startYear: startYearNum,
+        endYear: endYearNum
       };
     }
-    return {};
+
+    return { startYear: currentYear, endYear: currentYear };
   }
 
-  private extractAccountSummary(text: string): BankAccount {
-    // Account Number: "Account number: 0004 4897 5489"
-    const accNumMatch = text.match(/Account number:\s*([0-9\s]{8,20})/i) || text.match(/Account #\s*([0-9\s]{8,20})/i);
-    const accountNumber = accNumMatch ? accNumMatch[1].trim() : 'UNKNOWN';
-
-    // Account Name / Product
+  private extractAccountSummary(text: string, doc: ExtractedPdfDocument): BankAccount {
+    // Product Name (e.g. "Your Adv Plus Banking", "Core Checking")
     let accountName = 'Adv Plus Banking';
-    if (text.includes('Adv Plus Banking')) {
-      accountName = 'Adv Plus Banking';
-    } else if (text.includes('Preferred Rewards')) {
-      accountName = 'Bank of America Preferred Banking';
+    const prodMatch = text.match(/Your\s+([A-Za-z0-9\s]+?Banking)/i);
+    if (prodMatch) {
+      accountName = prodMatch[1].trim();
     }
 
+    // Account Number: "Account number: 0004 1234 5678"
+    const accMatch = text.match(/Account number:\s*([0-9\s]+)/i);
+    const accountNumberMasked = accMatch ? accMatch[1].trim() : 'UNKNOWN';
+
+    // Balances
     let openingBalance: number | undefined;
     let closingBalance: number | undefined;
     let totalDeposits: number | undefined;
     let totalWithdrawals: number | undefined;
 
-    // Balances
-    const openMatch = text.match(/Beginning balance on [A-Za-z]+\s+\d{1,2},\s*\d{4}\s+\$?([-\d,]+\.\d{2})/i);
-    if (openMatch) openingBalance = parseFloat(openMatch[1].replace(/,/g, ''));
+    const beginMatch = text.match(/Beginning balance on\s+[A-Za-z0-9,\s]+\$([-\$\s]*[\d,]+\.\d{2})/i);
+    if (beginMatch) {
+      openingBalance = this.parseCurrency(beginMatch[1]);
+    }
 
-    const closeMatch = text.match(/Ending balance on [A-Za-z]+\s+\d{1,2},\s*\d{4}\s+\$?([-\d,]+\.\d{2})/i);
-    if (closeMatch) closingBalance = parseFloat(closeMatch[1].replace(/,/g, ''));
+    const endMatch = text.match(/Ending balance on\s+[A-Za-z0-9,\s]+\$([-\$\s]*[\d,]+\.\d{2})/i);
+    if (endMatch) {
+      closingBalance = this.parseCurrency(endMatch[1]);
+    }
 
-    const depMatch = text.match(/Deposits and other additions\s+\$?([\d,]+\.\d{2})/i);
-    if (depMatch) totalDeposits = parseFloat(depMatch[1].replace(/,/g, ''));
+    const depMatch = text.match(/Deposits and other additions\s+([-\$\s]*[\d,]+\.\d{2})/i);
+    if (depMatch) {
+      totalDeposits = this.parseCurrency(depMatch[1]);
+    }
 
-    const withMatch = text.match(/Other subtractions\s+\$?([-\d,]+\.\d{2})/i);
-    if (withMatch) totalWithdrawals = Math.abs(parseFloat(withMatch[1].replace(/,/g, '')));
+    const subMatch = text.match(/Other subtractions\s+([-\$\s]*[\d,]+\.\d{2})/i);
+    const checksMatch = text.match(/Checks\s+([-\$\s]*[\d,]+\.\d{2})/i);
+
+    let totalSub = 0;
+    if (subMatch) totalSub += Math.abs(this.parseCurrency(subMatch[1]));
+    if (checksMatch) totalSub += Math.abs(this.parseCurrency(checksMatch[1]));
+    if (totalSub > 0) totalWithdrawals = totalSub;
 
     return {
       accountName,
-      accountNumberMasked: accountNumber,
+      accountNumberMasked,
       accountType: 'CHECKING',
       currency: 'USD',
       openingBalance,
@@ -106,224 +130,169 @@ export class BofABankParser implements BankParser {
     };
   }
 
-  private extractDeposits(doc: ExtractedPdfDocument, account: BankAccount): void {
-    let inDepositsSection = false;
-
-    for (const page of doc.pages) {
-      for (const line of page.lines) {
-        if (line.includes('Deposits and other additions') && !line.includes('Total deposits')) {
-          inDepositsSection = true;
-          continue;
-        }
-        if (inDepositsSection) {
-          if (
-            line.startsWith('Total deposits and other additions') ||
-            line.startsWith('Withdrawals and other subtractions') ||
-            line.startsWith('Other subtractions') ||
-            line.startsWith('Checks')
-          ) {
-            inDepositsSection = false;
-            break;
-          }
-
-          if (line.startsWith('Date') || line.startsWith('Page ') || line.includes('! Account #')) {
-            continue;
-          }
-
-          // Format: "07/02/26 ACME CORP DES:PAYROLL ID:123456789 INDN:Jane Doe CO ID:JXXXXXXXXX PPD 4,975.65"
-          const match = line.match(/^(\d{2}\/\d{2}\/\d{2})\s+(.+?)\s+([\d,]+\.\d{2})$/);
-          if (match) {
-            const [, dateStr, desc, amtStr] = match;
-            const isoDate = this.normalizeBofADate(dateStr);
-            const amount = parseFloat(amtStr.replace(/,/g, ''));
-
-            account.transactions.push({
-              date: isoDate,
-              description: desc.trim(),
-              rawDescription: line,
-              amount: Math.abs(amount), // deposits are positive credits
-              type: 'CREDIT'
-            });
-          }
-        }
-      }
-    }
-  }
-
-  private extractWithdrawals(doc: ExtractedPdfDocument, account: BankAccount): void {
-    let inWithdrawalsSection = false;
-    let currentTx: { date: string; descParts: string[]; rawLines: string[]; amount: number } | null = null;
-
-    for (const page of doc.pages) {
-      for (const line of page.lines) {
-        if (line.includes('Other subtractions') && !line.includes('Total other subtractions')) {
-          inWithdrawalsSection = true;
-          continue;
-        }
-        if (inWithdrawalsSection) {
-          if (
-            line.startsWith('Total other subtractions') ||
-            line.startsWith('Total withdrawals') ||
-            line.startsWith('Checks') ||
-            line.includes('Introducing My Credit') ||
-            line.includes('Service fees')
-          ) {
-            if (currentTx) {
-              this.pushWithdrawalTx(account, currentTx);
-              currentTx = null;
-            }
-            inWithdrawalsSection = false;
-            break;
-          }
-
-          if (line.startsWith('Date') || line.startsWith('Page ') || line.includes('! Account #')) {
-            continue;
-          }
-
-          // Check if new transaction row starts with Date (MM/DD/YY)
-          const newRowMatch = line.match(/^(\d{2}\/\d{2}\/\d{2})\s+(.*)$/);
-          if (newRowMatch) {
-            if (currentTx) {
-              this.pushWithdrawalTx(account, currentTx);
-              currentTx = null;
-            }
-
-            const [, dateStr, rest] = newRowMatch;
-            const isoDate = this.normalizeBofADate(dateStr);
-
-            // Check if amount is on the same line
-            const endAmtMatch = rest.match(/([-\$]?[\d,]+\.\d{2})$/);
-            if (endAmtMatch) {
-              const amountStr = endAmtMatch[1];
-              const desc = rest.substring(0, rest.length - amountStr.length).trim();
-              const amt = Math.abs(parseFloat(amountStr.replace(/[$,]/g, '')));
-              currentTx = {
-                date: isoDate,
-                descParts: desc ? [desc] : [],
-                rawLines: [line],
-                amount: amt
-              };
-            } else {
-              currentTx = {
-                date: isoDate,
-                descParts: [rest.trim()],
-                rawLines: [line],
-                amount: 0
-              };
-            }
-          } else if (currentTx) {
-            // Continuation line of multi-line description or trailing amount
-            const endAmtMatch = line.match(/([-\$]?[\d,]+\.\d{2})$/);
-            if (endAmtMatch && currentTx.amount === 0) {
-              const amountStr = endAmtMatch[1];
-              const desc = line.substring(0, line.length - amountStr.length).trim();
-              if (desc) currentTx.descParts.push(desc);
-              currentTx.amount = Math.abs(parseFloat(amountStr.replace(/[$,]/g, '')));
-              currentTx.rawLines.push(line);
-            } else {
-              currentTx.descParts.push(line.trim());
-              currentTx.rawLines.push(line);
-            }
-          }
-        }
-      }
-    }
-
-    if (currentTx) {
-      this.pushWithdrawalTx(account, currentTx);
-    }
-  }
-
-  private pushWithdrawalTx(
+  private extractTransactions(
+    doc: ExtractedPdfDocument,
     account: BankAccount,
-    tx: { date: string; descParts: string[]; rawLines: string[]; amount: number }
+    startYear: number,
+    endYear: number
   ): void {
-    const cleanedDesc = tx.descParts.join(' ').replace(/\s+/g, ' ').trim();
-    account.transactions.push({
-      date: tx.date,
-      description: cleanedDesc,
-      rawDescription: tx.rawLines.join('\n'),
-      amount: -Math.abs(tx.amount), // withdrawals are negative debits
-      type: 'DEBIT'
-    });
-  }
-
-  private extractChecks(doc: ExtractedPdfDocument, account: BankAccount): void {
-    let inChecksSection = false;
+    type Section = 'NONE' | 'DEPOSITS' | 'SUBTRACTIONS' | 'CHECKS' | 'FEES';
+    let currentSection: Section = 'NONE';
 
     for (const page of doc.pages) {
+      let pendingDesc: string[] = [];
+      let pendingTx: { date: string; amount: number; isCredit: boolean; checkNumber?: string } | null = null;
+
+      const flushPending = () => {
+        if (pendingTx) {
+          account.transactions.push({
+            date: pendingTx.date,
+            description: pendingDesc.join(' ').trim(),
+            rawDescription: pendingDesc.join(' ').trim(),
+            amount: pendingTx.isCredit ? pendingTx.amount : -pendingTx.amount,
+            type: pendingTx.isCredit ? 'CREDIT' : 'DEBIT',
+            checkNumber: pendingTx.checkNumber,
+            category: currentSection !== 'NONE' ? currentSection : undefined
+          });
+          pendingTx = null;
+          pendingDesc = [];
+        }
+      };
+
       for (const line of page.lines) {
-        if (line.trim() === 'Checks' || line.startsWith('Checks\n')) {
-          inChecksSection = true;
+        // Sub-table section detection
+        if (line.includes('Deposits and other additions') || line.includes('Total deposits and other additions')) {
+          if (line.startsWith('Total')) {
+            flushPending();
+            currentSection = 'NONE';
+          } else {
+            flushPending();
+            currentSection = 'DEPOSITS';
+          }
           continue;
         }
-        if (inChecksSection) {
-          if (
-            line.startsWith('Total checks') ||
-            line.startsWith('Check images') ||
-            line.includes('Braille and Large Print') ||
-            line.includes('Service fees')
-          ) {
-            inChecksSection = false;
-            break;
-          }
 
-          if (line.startsWith('Date') || line.startsWith('Page ') || line.includes('! Account #')) {
-            continue;
+        if (line.includes('Other subtractions') || line.includes('Total other subtractions')) {
+          if (line.startsWith('Total')) {
+            flushPending();
+            currentSection = 'NONE';
+          } else {
+            flushPending();
+            currentSection = 'SUBTRACTIONS';
           }
+          continue;
+        }
 
-          // Format: "07/09/26 214 -600.00"
-          const match = line.match(/^(\d{2}\/\d{2}\/\d{2})\s+(\d+)\s+([-\$]?[\d,]+\.\d{2})$/);
-          if (match) {
-            const [, dateStr, checkNum, amtStr] = match;
-            const isoDate = this.normalizeBofADate(dateStr);
-            const amt = Math.abs(parseFloat(amtStr.replace(/[$,]/g, '')));
+        if (line.includes('Checks') || line.includes('Total checks')) {
+          if (line.startsWith('Total')) {
+            flushPending();
+            currentSection = 'NONE';
+          } else {
+            flushPending();
+            currentSection = 'CHECKS';
+          }
+          continue;
+        }
+
+        if (line.includes('Service fees') || line.includes('Total service fees')) {
+          if (line.startsWith('Total')) {
+            flushPending();
+            currentSection = 'NONE';
+          } else {
+            flushPending();
+            currentSection = 'FEES';
+          }
+          continue;
+        }
+
+        if (currentSection === 'NONE') {
+          continue;
+        }
+
+        // 1. Checks Table: "MM/DD/YY CHECK# AMOUNT"
+        if (currentSection === 'CHECKS') {
+          const checkMatch = line.match(/^(\d{2}\/\d{2}\/\d{2})\s+(\d+)\s+([-\$\s]*[\d,]+\.\d{2})/);
+          if (checkMatch) {
+            flushPending();
+            const [, dStr, chkNum, amtStr] = checkMatch;
+            const iso = this.formatBofADate(dStr, startYear, endYear);
+            const amount = Math.abs(this.parseCurrency(amtStr));
 
             account.transactions.push({
-              date: isoDate,
-              description: `Check #${checkNum}`,
+              date: iso,
+              description: `Check #${chkNum}`,
               rawDescription: line,
-              checkNumber: checkNum,
-              amount: -amt, // check is a debit
-              type: 'DEBIT'
+              amount: -amount,
+              type: 'DEBIT',
+              checkNumber: chkNum,
+              category: 'CHECKS'
             });
+            continue;
           }
         }
+
+        // 2. Deposits or Subtractions Table: "MM/DD/YY DESCRIPTION AMOUNT"
+        const txMatch = line.match(/^(\d{2}\/\d{2}\/\d{2})\s+(.+?)\s+([-\$\s]*[\d,]+\.\d{2})$/);
+        if (txMatch) {
+          flushPending();
+          const [, dStr, desc, amtStr] = txMatch;
+          const iso = this.formatBofADate(dStr, startYear, endYear);
+          const amount = Math.abs(this.parseCurrency(amtStr));
+          const isCredit = currentSection === 'DEPOSITS';
+
+          pendingTx = { date: iso, amount, isCredit };
+          pendingDesc = [desc.trim()];
+          continue;
+        }
+
+        // Multi-line description continuation
+        if (pendingTx && !line.includes('Page ') && !line.includes('Bank of America')) {
+          pendingDesc.push(line.trim());
+        }
       }
+
+      flushPending();
     }
   }
 
-  private normalizeBofADate(mmddyy: string): string {
-    const [mm, dd, yy] = mmddyy.split('/');
-    const fullYear = parseInt(yy, 10) < 50 ? `20${yy}` : `19${yy}`;
-    return `${fullYear}-${mm}-${dd}`;
+  private formatBofADate(dStr: string, startYear: number, endYear: number): string {
+    const [mm, dd, yy] = dStr.split('/');
+    const year = parseInt(yy, 10) < 50 ? 2000 + parseInt(yy, 10) : 1900 + parseInt(yy, 10);
+    return `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  }
+
+  private parseCurrency(val: string): number {
+    const isNegative = val.includes('-') || val.startsWith('(');
+    const cleaned = val.replace(/[\$\(\),\s\+-]/g, '').trim();
+    const num = parseFloat(cleaned);
+    return isNegative ? -num : num;
   }
 
   private monthNameToNumber(name: string): string {
     const months: Record<string, string> = {
-      january: '01',
       jan: '01',
-      february: '02',
       feb: '02',
-      march: '03',
       mar: '03',
-      april: '04',
       apr: '04',
       may: '05',
-      june: '06',
       jun: '06',
-      july: '07',
       jul: '07',
-      august: '08',
       aug: '08',
-      september: '09',
       sep: '09',
-      october: '10',
       oct: '10',
-      november: '11',
       nov: '11',
-      december: '12',
-      dec: '12'
+      dec: '12',
+      january: '01',
+      february: '02',
+      march: '03',
+      april: '04',
+      june: '06',
+      july: '07',
+      august: '08',
+      september: '09',
+      october: '10',
+      november: '11',
+      december: '12'
     };
     return months[name.toLowerCase()] || '01';
   }

@@ -1,41 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'fs';
-import { extractPdfDocument } from '../src/core/pdf-extractor.js';
 import { ChaseCreditCardParser } from '../src/ingestors/rule-based/parsers/chase-credit-card.js';
+import {
+  mockChaseCreditCardPersonalDocument,
+  mockChaseCreditCardBusinessDocument
+} from './fixtures/mock-documents.js';
 
 describe('ChaseCreditCardParser', () => {
   const parser = new ChaseCreditCardParser();
 
-  it('parses August statement with credit balance and 0 transactions', async () => {
-    const buf = fs.readFileSync('samples/20260813-statements-8890-.pdf');
-    const doc = await extractPdfDocument(buf);
-
-    expect(parser.canHandle(doc)).toBe(true);
-    const result = parser.parse(doc);
-
-    expect(result.institution).toBe('JPMorgan Chase Bank, N.A.');
-    expect(result.periodStart).toBe('2026-07-14');
-    expect(result.periodEnd).toBe('2026-08-13');
-    expect(result.accounts).toHaveLength(1);
-
-    const account = result.accounts[0];
-    expect(account.accountName).toContain('CHASE FREEDOM UNLIMITED');
-    expect(account.accountNumberMasked).toBe('...8890');
-    expect(account.accountType).toBe('CREDIT_CARD');
-    expect(account.openingBalance).toBe(-83.51);
-    expect(account.closingBalance).toBe(-83.51);
-    expect(account.transactions).toHaveLength(0);
-
-    expect(account.reconciliation?.isBalanced).toBe(true);
-    expect(account.reconciliation?.discrepancy).toBe(0);
-  });
-
-  it('parses March statement with purchases and 100% balance reconciliation', async () => {
-    const buf = fs.readFileSync('samples/20260313-statements-8890-.pdf');
-    const doc = await extractPdfDocument(buf);
-
-    expect(parser.canHandle(doc)).toBe(true);
-    const result = parser.parse(doc);
+  it('parses personal credit card statement with purchases and 100% balance reconciliation', () => {
+    expect(parser.canHandle(mockChaseCreditCardPersonalDocument)).toBe(true);
+    const result = parser.parse(mockChaseCreditCardPersonalDocument);
 
     expect(result.institution).toBe('JPMorgan Chase Bank, N.A.');
     expect(result.periodStart).toBe('2026-02-14');
@@ -44,37 +19,34 @@ describe('ChaseCreditCardParser', () => {
 
     const account = result.accounts[0];
     expect(account.accountName).toContain('CHASE FREEDOM UNLIMITED');
-    expect(account.accountNumberMasked).toBe('...1093');
+    expect(account.accountNumberMasked).toBe('...1111');
     expect(account.accountType).toBe('CREDIT_CARD');
     expect(account.openingBalance).toBe(0);
-    expect(account.closingBalance).toBe(30.46);
+    expect(account.closingBalance).toBe(75.5);
     expect(account.transactions).toHaveLength(2);
 
     expect(account.transactions[0]).toMatchObject({
       date: '2026-02-20',
-      description: 'FASTRAK CSC 415-486-8655 CA',
+      description: 'TRANSIT FARE PASS',
       amount: -25.0,
       type: 'DEBIT'
     });
 
     expect(account.transactions[1]).toMatchObject({
       date: '2026-02-28',
-      description: 'CVSExtraCare 8007467287RI 800-746-7287 RI',
-      amount: -5.46,
+      description: 'PHARMACY STORE',
+      amount: -50.5,
       type: 'DEBIT'
     });
 
     expect(account.reconciliation?.isBalanced).toBe(true);
     expect(account.reconciliation?.discrepancy).toBe(0);
-    expect(account.reconciliation?.calculatedClosingBalance).toBe(30.46);
+    expect(account.reconciliation?.calculatedClosingBalance).toBe(75.5);
   });
 
-  it('parses Chase Business Credit Card statement (Account 6058) with 66 transactions across multiple pages', async () => {
-    const buf = fs.readFileSync('samples/20260812-statements-6058-.pdf');
-    const doc = await extractPdfDocument(buf);
-
-    expect(parser.canHandle(doc)).toBe(true);
-    const result = parser.parse(doc);
+  it('parses Chase Business Credit Card statement with multi-cardholder sub-account segmentation', () => {
+    expect(parser.canHandle(mockChaseCreditCardBusinessDocument)).toBe(true);
+    const result = parser.parse(mockChaseCreditCardBusinessDocument);
 
     expect(result.institution).toBe('JPMorgan Chase Bank, N.A.');
     expect(result.periodStart).toBe('2026-07-13');
@@ -82,33 +54,36 @@ describe('ChaseCreditCardParser', () => {
     expect(result.accounts).toHaveLength(1);
 
     const account = result.accounts[0];
-    expect(account.accountNumberMasked).toBe('...6058');
+    expect(account.accountNumberMasked).toBe('...5555');
     expect(account.accountType).toBe('CREDIT_CARD');
-    expect(account.openingBalance).toBe(3337.94);
-    expect(account.closingBalance).toBe(6772.82);
+    expect(account.openingBalance).toBe(2000.0);
+    expect(account.closingBalance).toBe(3500.0);
 
-    // 66 transactions (1 payment + 65 purchases)
-    expect(account.transactions).toHaveLength(66);
+    expect(account.transactions).toHaveLength(4);
 
-    // Verify payment
-    const payment = account.transactions.find((tx) => tx.type === 'CREDIT');
+    // Primary cardholder transactions
+    const aliceTxs = account.transactions.filter((tx) => tx.description.includes('ALICE SMITH #5555'));
+    expect(aliceTxs).toHaveLength(3);
+    expect(aliceTxs[0].category).toBe('Cardholder: ALICE SMITH #5555');
+
+    // Payment in Alice block
+    const payment = aliceTxs.find((tx) => tx.type === 'CREDIT');
     expect(payment).toBeDefined();
-    expect(payment?.date).toBe('2026-08-06');
-    expect(payment?.amount).toBe(3337.94);
-    expect(payment?.description).toContain('AUTOMATIC PAYMENT - THANK YOU');
+    expect(payment?.amount).toBe(2000.0);
 
-    // Verify sample purchases
-    const purchases = account.transactions.filter((tx) => tx.type === 'DEBIT');
-    expect(purchases).toHaveLength(65);
-    expect(purchases[0]).toMatchObject({
-      date: '2026-07-12',
-      amount: -12.93,
-      type: 'DEBIT'
+    // Sub-account Bob Smith transactions
+    const bobTxs = account.transactions.filter((tx) => tx.description.includes('BOB SMITH #6666'));
+    expect(bobTxs).toHaveLength(1);
+    expect(bobTxs[0]).toMatchObject({
+      date: '2026-07-22',
+      amount: -1000.0,
+      type: 'DEBIT',
+      category: 'Cardholder: BOB SMITH #6666'
     });
 
-    // 100% balance reconciliation check: $3337.94 - $3337.94 + $6772.82 = $6772.82
+    // 100% balance reconciliation check: $2,000.00 - $2,000.00 + $3,500.00 = $3,500.00
     expect(account.reconciliation?.isBalanced).toBe(true);
     expect(account.reconciliation?.discrepancy).toBe(0);
-    expect(account.reconciliation?.calculatedClosingBalance).toBe(6772.82);
+    expect(account.reconciliation?.calculatedClosingBalance).toBe(3500.0);
   });
 });

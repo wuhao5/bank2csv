@@ -139,8 +139,8 @@ export class CapitalOneCreditCardParser implements BankParser {
     for (const page of doc.pages) {
       for (const line of page.lines) {
         // Detect cardholder section headers, e.g.:
-        // "HAO WU #4192: Payments, Credits and Adjustments"
-        // "HAO WU #4192: Transactions"
+        // "CARDHOLDER_NAME #1234: Payments, Credits and Adjustments"
+        // "CARDHOLDER_NAME #1234: Transactions"
         const headerMatch = line.match(/^([A-Za-z\s]+#\d{4}):\s*(Payments, Credits and Adjustments|Transactions)/i);
         if (headerMatch) {
           currentCardholder = headerMatch[1].trim();
@@ -159,8 +159,7 @@ export class CapitalOneCreditCardParser implements BankParser {
         }
 
         // Transaction line regex:
-        // Format: "Jul 20 Jul 20 ELECTRONIC PAYMENT - $196.98"
-        // Format: "Jul 17 Jul 17 MOUNTAIN VIEW TENNIS WWW.MOUNTAINV CA $2,014.00"
+        // Format: "MMM DD MMM DD DESCRIPTION AMOUNT"
         const txMatch = line.match(
           /^([A-Za-z]{3})\s+(\d{1,2})\s+([A-Za-z]{3})\s+(\d{1,2})\s+(.+?)\s+([-\$]?[\d,]+\.\d{2})$/
         );

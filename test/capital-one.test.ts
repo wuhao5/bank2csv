@@ -1,23 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'fs';
-import { extractPdfDocument } from '../src/core/pdf-extractor.js';
 import { CapitalOneCreditCardParser } from '../src/ingestors/rule-based/parsers/capital-one.js';
+import { mockCapitalOneCreditCardDocument } from './fixtures/mock-documents.js';
 
 describe('CapitalOneCreditCardParser', () => {
-  const samplePath = 'samples/Statement_082026_4192.pdf';
+  const parser = new CapitalOneCreditCardParser();
 
-  it('detects Capital One statements correctly', async () => {
-    const buf = fs.readFileSync(samplePath);
-    const doc = await extractPdfDocument(buf);
-    const parser = new CapitalOneCreditCardParser();
-    expect(parser.canHandle(doc)).toBe(true);
+  it('canHandle returns true for Capital One credit card statements', () => {
+    expect(parser.canHandle(mockCapitalOneCreditCardDocument)).toBe(true);
   });
 
-  it('parses multi-cardholder transactions, payments, and 100% reconciles balance', async () => {
-    const buf = fs.readFileSync(samplePath);
-    const doc = await extractPdfDocument(buf);
-    const parser = new CapitalOneCreditCardParser();
-    const result = parser.parse(doc);
+  it('correctly parses Capital One multi-cardholder credit card statement', () => {
+    const result = parser.parse(mockCapitalOneCreditCardDocument);
 
     expect(result.institution).toBe('Capital One, N.A.');
     expect(result.periodStart).toBe('2026-07-15');
@@ -26,34 +19,31 @@ describe('CapitalOneCreditCardParser', () => {
 
     const account = result.accounts[0];
     expect(account.accountName).toContain('Venture X Card');
-    expect(account.accountNumberMasked).toBe('...4192');
+    expect(account.accountNumberMasked).toBe('...8888');
     expect(account.accountType).toBe('CREDIT_CARD');
-    expect(account.openingBalance).toBe(4196.98);
-    expect(account.closingBalance).toBe(4537.68);
+    expect(account.openingBalance).toBe(1500.0);
+    expect(account.closingBalance).toBe(2200.0);
+    expect(account.transactions).toHaveLength(3);
 
-    // 2 payments + 13 Hao Wu txs + 8 Miao Li txs = 23 total
-    expect(account.transactions).toHaveLength(23);
-
-    // Verify Payments (2 items)
+    // 1 payment + 2 purchases
     const payments = account.transactions.filter((tx) => tx.type === 'CREDIT');
-    expect(payments).toHaveLength(2);
-    expect(payments[0].amount).toBe(196.98);
-    expect(payments[1].amount).toBe(4000.0);
+    expect(payments).toHaveLength(1);
+    expect(payments[0].amount).toBe(1500.0);
+    expect(payments[0].description).toContain('ALICE SMITH #8888');
 
-    // Verify Purchases (21 items)
     const purchases = account.transactions.filter((tx) => tx.type === 'DEBIT');
-    expect(purchases).toHaveLength(21);
-    expect(purchases[0].amount).toBe(-2014.0);
-    expect(purchases[0].description).toContain('HAO WU #4192');
-    expect(purchases[0].description).toContain('MOUNTAIN VIEW TENNIS');
+    expect(purchases).toHaveLength(2);
+    expect(purchases[0].description).toContain('ALICE SMITH #8888');
+    expect(purchases[0].description).toContain('GROCERY STORE');
+    expect(purchases[0].amount).toBe(-1200.0);
 
-    // Verify Miao Li transactions
-    const miaoLiTxs = purchases.filter((tx) => tx.description.includes('MIAO LI #2682'));
-    expect(miaoLiTxs).toHaveLength(8);
+    const bobTxs = purchases.filter((tx) => tx.description.includes('BOB SMITH #9999'));
+    expect(bobTxs).toHaveLength(1);
+    expect(bobTxs[0].description).toContain('HARDWARE STORE');
+    expect(bobTxs[0].amount).toBe(-1000.0);
 
-    // Verify 100% balance reconciliation ($4,196.98 - $4,196.98 + $4,537.68 = $4,537.68)
+    // Liability balance check: $1,500.00 - $1,500.00 + $2,200.00 = $2,200.00
     expect(account.reconciliation?.isBalanced).toBe(true);
     expect(account.reconciliation?.discrepancy).toBe(0);
-    expect(account.reconciliation?.calculatedClosingBalance).toBe(4537.68);
   });
 });
