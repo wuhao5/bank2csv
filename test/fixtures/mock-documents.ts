@@ -216,3 +216,162 @@ EXTERNAL TRANSFER FROM MAIN CHECKING
 08/15/2026 Ending Balance $12,050.00
 Ally Bank Member FDIC STMTCMB100 05/2013`
 ]);
+
+export const mockWellsFargoCheckingDocument: ExtractedPdfDocument = createMockDoc([
+  `Wells Fargo Everyday Checking
+September 16, 2026 Page 1 of 3
+Online: wellsfargo.com
+Write: Wells Fargo Bank, N.A. (114)
+Statement period activity summary Account number: 7361701234
+Beginning balance on 8/16 $5,000.00
+Deposits/Additions 2,500.00
+Withdrawals/Subtractions - 1,500.00
+Ending balance on 9/16 $6,000.00`,
+
+  `September 16, 2026 Page 2 of 3
+Transaction history
+Check Deposits/ Withdrawals/ Ending daily
+Date Number Description Additions Subtractions balance
+8/20 Salary Direct Deposit Payroll 2,500.00 7,500.00
+8/25 101 Check 500.00 7,000.00
+9/05 Utility Payment Online 1,000.00 6,000.00
+Ending balance on 9/16 6,000.00
+Totals $2,500.00 $1,500.00`
+]);
+
+export const mockWellsFargoSavingsDocument: ExtractedPdfDocument = createMockDoc([
+  `Wells Fargo Way2Save Savings
+January 31, 2026 Page 1 of 2
+Online: wellsfargo.com
+Write: Wells Fargo Bank, N.A. (114)
+Statement period activity summary Account number: 7296535678
+Beginning balance on 1/1 $10,000.00
+Deposits/Additions 10.50
+Withdrawals/Subtractions - 2,000.00
+Ending balance on 1/31 $8,010.50`,
+
+  `January 31, 2026 Page 2 of 2
+Transaction history
+Deposits/ Withdrawals/ Ending daily
+Date Description Additions Subtractions balance
+1/15 Online Transfer to Checking 2,000.00 8,000.00
+1/31 Interest Payment 10.50 8,010.50
+Ending balance on 1/31 8,010.50
+Totals $10.50 $2,000.00`
+]);
+
+export const mockUSBankCheckingDocument: ExtractedPdfDocument = createMockDoc([
+  `Wealth Management
+Uni- Statement
+Account Number:
+1 575 2213 1234
+Statement Period :
+Jan 14, 2026
+through
+Feb 11, 2026
+Page 1 of 2
+U.S. BANK PLATINUM CHECKING Member FDIC
+U.S. Bank National Association Account Number 1-575-2213-1234
+Account Summary
+Beginning Balance on Jan 14 $ 1,000.00
+Deposits / Credits 3,000.50
+Other Withdrawals 1,500.00 -
+Ending Balance on Feb 11, 2026 $ 2,500.50
+Deposits / Credits
+Date Description of Transaction Ref Number Amount
+Jan 20 Direct Deposit Payroll $ 3,000.00
+Feb 11 Interest Paid 1100036838 0.50
+Total Deposits / Credits $ 3,000.50
+Other Withdrawals
+Date Description of Transaction Ref Number Amount
+Jan 25 Electronic Withdrawal Mortgage $ 1,500.00 -
+REF=1234567890 TRANSFER
+Total Other Withdrawals $ 1,500.00 -`
+]);
+
+export const mockTargetRedCardDocument: ExtractedPdfDocument = createMockDoc([
+  `RedCardEndingin:1234
+AccountIdentificationNumber:00012345678 StatementClosingDate: July16,2026
+SummaryofAccountActivity PaymentInformation
+PreviousBalance $100.00 NewBalance $150.00
+PaymentsandOtherCredits -$100.00
+PurchasesandOtherDebits +$150.00
+NewBalance $150.00
+DaysinBillingCycle 30
+ManageMyRedCard Target.com/myRedCard
+TargetCardServices 1-800-424-6888
+Transactions
+TransDate DescriptionofTransactionorCredit Location Amount
+PaymentsAndOtherCredits
+Jun.20 E-PAYMENT,TARGET.COM -$100.00
+TOTALPAYMENTSANDOTHERCREDITSFORTHISPERIOD -$100.00`,
+
+  `RedCardEndingin:1234
+StatementClosingDate: July16,2026
+Transactions(cont.)
+TransDate DescriptionofTransactionorCredit Location Amount
+PurchasesAndOtherDebits
+Jun.25 TARGET STORE 0001 SUNNYVALE,CA $100.00
+Jul.02 TARGET STORE 0002 MOUNTAINVIEW,CA $50.00
+TOTALPURCHASESANDOTHERDEBITSFORTHISPERIOD $150.00
+TD Bank USA, N.A.`
+]);
+
+export const mockSFCUDocument: ExtractedPdfDocument = createMockDoc([
+  `Member Number: 12345678
+Statement Date: 08-31-2026
+Page: 1 of 2
+Stanford Federal Credit Union | sfcu.org
+ACCOUNT SUMMARY
+Basic Checking $3,000.00 Auto Used Fixed $20,000.00
+BASIC CHECKING (CHECKING) xxxxxx1234
+Beginning Balance: $2,000.00 Dividend Period: 08-01-2026 to 08-31-2026
+Deposits: $2,000.00
+Withdrawals: $1,000.00
+Ending Balance: $3,000.00
+TRANSACTIONS
+Posted Effective
+Date Date Description Withdrawals Deposit Balance
+Beginning Balance $2,000.00
+08/05 08/05 ACH Credit EMPLOYER PAYROLL 2,000.00 $4,000.00
+08/10 08/10 Withdrawal Online Transfer 1,000.00 $3,000.00
+Ending Balance $3,000.00`,
+
+  `Member Number: 12345678
+Statement Date: 08-31-2026
+Page: 2 of 2
+AUTO USED FIXED - 2020 MODEL 3 (CONSUMER LOAN) xxxxxx5678
+Beginning Balance: $20,500.00
+Ending Balance: $20,000.00
+TRANSACTIONS
+Payments
+Date Effective Transaction Credit, or Finance Fee or Late
+Posted Date Description Amount Debits Charge Charges Balance
+Previous Balance $20,500.00
+08/15 08/15 Regular Payment 550.00 500.00 50.00 0.00 20,000.00
+Ending Balance $20,000.00
+Stanford Federal Credit Union | sfcu.org`
+]);
+
+export const mockMarcusDocument: ExtractedPdfDocument = createMockDoc([
+  `Statement Period
+Goldman Sachs Bank USA 04/01/2026 to 04/30/2026
+PO Box 70379 Page 1 of 1
+Marcus.com
+ONLINE SAVINGS ACCOUNT STATEMENT
+Account Number 300012345678
+Account Name Online Savings
+STATEMENT SUMMARY as of 04/30/2026
+Beginning Balance $50,000.00
+Deposits and Other Credits $500.00
+Withdrawals and Other Debits $1,000.00
+Ending Balance $49,500.00
+ACCOUNT ACTIVITY
+Date Description Credits Debits Balance
+04/01/2026 Beginning Balance $50,000.00
+04/10/2026 ACH Withdrawal CREDIT CARD PAYMENT $1,000.00 $49,000.00
+04/30/2026 Interest Paid $500.00 $49,500.00
+04/30/2026 Ending Balance $49,500.00
+Explore the Marcus Resource Center`
+]);
+

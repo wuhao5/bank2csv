@@ -5,6 +5,11 @@ import { ChaseCreditCardParser } from './parsers/chase-credit-card.js';
 import { BofABankParser } from './parsers/bofa.js';
 import { CapitalOneCreditCardParser } from './parsers/capital-one.js';
 import { AllyBankParser } from './parsers/ally.js';
+import { TargetRedCardParser } from './parsers/target-redcard.js';
+import { WellsFargoBankParser } from './parsers/wells-fargo.js';
+import { USBankParser } from './parsers/us-bank.js';
+import { SFCUBankParser } from './parsers/sfcu.js';
+import { MarcusBankParser } from './parsers/marcus.js';
 
 export class BankRouter {
   private parsers: BankParser[] = [];
@@ -12,11 +17,16 @@ export class BankRouter {
   constructor() {
     // Register built-in bank statement parsers (checking/savings and credit cards)
     // Note: Credit card parsers are checked first for card-specific statements
+    this.register(new TargetRedCardParser());
     this.register(new ChaseCreditCardParser());
+    this.register(new CapitalOneCreditCardParser());
     this.register(new ChaseBankParser());
     this.register(new BofABankParser());
-    this.register(new CapitalOneCreditCardParser());
     this.register(new AllyBankParser());
+    this.register(new WellsFargoBankParser());
+    this.register(new USBankParser());
+    this.register(new SFCUBankParser());
+    this.register(new MarcusBankParser());
   }
 
   /**

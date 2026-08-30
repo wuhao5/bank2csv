@@ -12,8 +12,9 @@ export class ChaseBankParser implements BankParser {
 
   canHandle(doc: ExtractedPdfDocument): boolean {
     const text = doc.fullText.toUpperCase();
+    const isChase = /\bCHASE\b/.test(text) || /\bJPMORGAN\b/.test(text);
     return (
-      (text.includes('CHASE') || text.includes('JPMORGAN')) &&
+      isChase &&
       (text.includes('CONSOLIDATED BALANCE SUMMARY') ||
         text.includes('CHASE TOTAL CHECKING') ||
         text.includes('CHECKING SUMMARY'))

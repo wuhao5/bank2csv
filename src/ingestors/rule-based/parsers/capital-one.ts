@@ -13,11 +13,15 @@ export class CapitalOneCreditCardParser implements BankParser {
   canHandle(doc: ExtractedPdfDocument): boolean {
     const text = doc.fullText.toUpperCase();
     return (
-      text.includes('CAPITAL ONE') ||
       text.includes('CAPITALONE.COM') ||
       text.includes('VENTURE X CARD') ||
       text.includes('QUICKSILVER') ||
-      text.includes('SAVOR')
+      text.includes('SAVOR') ||
+      (text.includes('CAPITAL ONE') &&
+        (text.includes('BILLING CYCLE') ||
+          text.includes('DAYS IN BILLING CYCLE') ||
+          text.includes('CAPITAL ONE, N.A.') ||
+          text.includes('WWW.CAPITALONE.COM')))
     );
   }
 

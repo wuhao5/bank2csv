@@ -13,16 +13,17 @@ export class ChaseCreditCardParser implements BankParser {
 
   canHandle(doc: ExtractedPdfDocument): boolean {
     const text = doc.fullText.toUpperCase();
+    const isChase = /\bCHASE\b/.test(text) || /\bJPMORGAN\b/.test(text);
     return (
-      (text.includes('CHASE') || text.includes('JPMORGAN')) &&
+      isChase &&
       (text.includes('CARDHELP') ||
         text.includes('CHASE FREEDOM') ||
         text.includes('CHASE SAPPHIRE') ||
         text.includes('CHASE INK') ||
         text.includes('CHASE CARD SERVICES') ||
         text.includes('CHASE ULTIMATE REWARDS') ||
-        (text.includes('OPENING/CLOSING DATE') && (text.includes('CREDIT LIMIT') || text.includes('REVOLVING CREDIT AMOUNT'))) ||
-        text.includes('ACCOUNT ACTIVITY'))
+        (text.includes('OPENING/CLOSING DATE') &&
+          (text.includes('CREDIT LIMIT') || text.includes('REVOLVING CREDIT AMOUNT'))))
     );
   }
 
