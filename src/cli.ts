@@ -99,14 +99,23 @@ program
         unifiedWriter = new StatementCsvWriter(unifiedOutPath, preset);
       }
 
+      let skipped = 0;
       for (const filePath of filesToProcess) {
         const filename = path.basename(filePath);
         console.log(`📄 Processing: ${filename}`);
 
-        const statement = await parseStatement(filePath, {
-          useAi: Boolean(options.ai),
-          useOcr: Boolean(options.ocr)
-        });
+        let statement;
+        try {
+          statement = await parseStatement(filePath, {
+            useAi: Boolean(options.ai),
+            useOcr: Boolean(options.ocr)
+          });
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.warn(`   ⚠️  Skipped: ${message}\n`);
+          skipped++;
+          continue;
+        }
 
         console.log(`   🏦 Institution: ${statement.institution}`);
         console.log(`   📅 Period: ${statement.periodStart || 'N/A'} to ${statement.periodEnd || 'N/A'}`);
@@ -146,7 +155,10 @@ program
       }
 
       await terminateOcrWorker();
-      console.log(`🎉 All statements successfully processed and saved to ${outputDir}`);
+      if (skipped > 0) {
+        console.log(`⚠️  ${skipped} file(s) skipped (no matching parser). See warnings above.`);
+      }
+      console.log(`🎉 ${filesToProcess.length - skipped} of ${filesToProcess.length} statement(s) successfully processed and saved to ${outputDir}`);
     } catch (err: unknown) {
       if (unifiedWriter) {
         unifiedWriter.close();

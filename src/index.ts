@@ -67,7 +67,11 @@ export async function parseStatement(
   }
 
   const router = options.router || defaultRouter;
-  return router.route(doc);
+  const result = router.route(doc);
+  if (!result) {
+    throw new Error('No matching parser found for this document.');
+  }
+  return result;
 }
 
 /**

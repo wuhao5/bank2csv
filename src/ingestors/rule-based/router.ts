@@ -55,17 +55,18 @@ export class BankRouter {
   /**
    * Routes the extracted document to the appropriate bank parser and returns the structured statement.
    */
-  route(doc: ExtractedPdfDocument): BankStatement {
+  route(doc: ExtractedPdfDocument): BankStatement | undefined {
     const parser = this.findMatchingParser(doc);
     if (!parser) {
       const sampleSnippet = doc.pages[0]?.lines.slice(0, 8).join(' | ') ?? '';
-      throw new Error(
-        `No registered rule-based bank parser matched this document.\n` +
-          `Document snippet: "${sampleSnippet}"\n\n` +
-          `Options:\n` +
-          `1. Run with AI direct ingestion flag (--ai) to parse via Multimodal AI.\n` +
-          `2. Refer to 'src/ingestors/rule-based/GUIDE.md' to add a dedicated parser for this bank layout.`
+      console.warn(
+        `⚠️  No registered rule-based bank parser matched this document.\n` +
+          `   Document snippet: "${sampleSnippet}"\n\n` +
+          `   Options:\n` +
+          `   1. Run with AI direct ingestion flag (--ai) to parse via Multimodal AI.\n` +
+          `   2. Refer to 'src/ingestors/rule-based/GUIDE.md' to add a dedicated parser for this bank layout.`
       );
+      return undefined;
     }
 
     return parser.parse(doc);
