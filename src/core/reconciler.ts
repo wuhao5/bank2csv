@@ -3,6 +3,7 @@ import type { BankAccount, ReconciliationResult } from './types.js';
 
 /**
  * Reconciles account transactions against opening and closing balances using exact Decimal arithmetic.
+ * Handles both Asset accounts (Checking/Savings) and Liability accounts (Credit Cards/Loans).
  */
 export function reconcileAccount(account: BankAccount): ReconciliationResult {
   const opening = new Decimal(account.openingBalance ?? 0);
@@ -21,10 +22,42 @@ export function reconcileAccount(account: BankAccount): ReconciliationResult {
     }
   }
 
-  // Calculated closing = opening + totalCredits - totalDebits
-  const calculatedClosing = opening.plus(totalCredits).minus(totalDebits);
-  const discrepancy = calculatedClosing.minus(closing);
-  const isBalanced = discrepancy.abs().lessThanOrEqualTo(0.01);
+  // 1. Asset view (Cash flow): Calculated closing = opening + totalCredits - totalDebits
+  const calcAssetClosing = opening.plus(totalCredits).minus(totalDebits);
+  const assetDiscrepancy = calcAssetClosing.minus(closing);
+
+  // 2. Liability view (Credit card / Loan balance owed): Calculated closing = opening - payments(credits) + purchases(debits)
+  const calcLiabilityClosing = opening.minus(totalCredits).plus(totalDebits);
+  const liabilityDiscrepancy = calcLiabilityClosing.minus(closing);
+
+  let isBalanced = false;
+  let calculatedClosing = calcAssetClosing;
+  let discrepancy = assetDiscrepancy;
+
+  if (account.accountType === 'CREDIT_CARD' || account.accountType === 'LOAN') {
+    // If liability calculation matches reported closing (common in credit card statements where balance is positive debt)
+    if (liabilityDiscrepancy.abs().lessThanOrEqualTo(0.01)) {
+      isBalanced = true;
+      calculatedClosing = calcLiabilityClosing;
+      discrepancy = liabilityDiscrepancy;
+    } else if (assetDiscrepancy.abs().lessThanOrEqualTo(0.01)) {
+      // If signed asset calculation matches
+      isBalanced = true;
+      calculatedClosing = calcAssetClosing;
+      discrepancy = assetDiscrepancy;
+    } else {
+      // Pick the closest discrepancy
+      if (liabilityDiscrepancy.abs().lessThan(assetDiscrepancy.abs())) {
+        calculatedClosing = calcLiabilityClosing;
+        discrepancy = liabilityDiscrepancy;
+      } else {
+        calculatedClosing = calcAssetClosing;
+        discrepancy = assetDiscrepancy;
+      }
+    }
+  } else {
+    isBalanced = assetDiscrepancy.abs().lessThanOrEqualTo(0.01);
+  }
 
   if (account.openingBalance === undefined && account.closingBalance === undefined) {
     notes.push('Statement did not report opening/closing balance; calculated from transaction totals.');

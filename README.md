@@ -1,21 +1,22 @@
-# Bank Statement to CSV Parser (TypeScript)
+# Bank & Credit Card Statement to CSV Parser (TypeScript)
 
-A TypeScript library and CLI tool that parses bank statement PDFs and image scans (including multi-account statements) and converts them into normalized CSV transaction lists with automated mathematical balance reconciliation.
+A TypeScript library and CLI tool that parses bank and credit card statement PDFs/scans (including multi-account statements and multi-cardholder statements) and converts them into normalized CSV transaction lists with automated mathematical balance reconciliation.
 
 ---
 
-## Key Features
+## Supported Banks & Statement Types
 
-- **Dual Ingestion Architecture**:
-  - **Deterministic Rule-Based Ingestors**: Fast, 100% offline, zero-API-cost parsers for supported banks (`Chase`, `Bank of America`).
-  - **Local OCR Extraction (`tesseract.js`)**: Pure JavaScript / WebAssembly OCR for image-based statements (`.png`, `.jpg`, `.jpeg`, `.tiff`) and scanned PDFs running completely offline without external binaries or cloud dependencies.
-  - **Direct AI Ingestor (Multimodal)**: Ingests raw PDF bytes directly with Gemini Flash (`--ai`), bypassing OCR/routing for unsupported banks or phone photos.
-- **Multi-Account Statements**: Automatically segregates multiple accounts in a single PDF (e.g., Checking + Savings in a Chase consolidated statement).
-- **Exact Balance Reconciliation**: Validates that $\text{Opening Balance} + \sum \text{Credits} - \sum \text{Debits} = \text{Closing Balance}$ using `decimal.js`. Flags any discrepancy or missed transaction.
-- **Multi-Format CSV Export**:
-  - Unified CSV (with Account columns) or split per-account CSV files (`--split`).
-  - Presets for **Standard**, **YNAB** (You Need A Budget), and **QuickBooks**.
-- **Agent & Developer Guide**: Standardized recipe and boilerplate in [`src/ingestors/rule-based/GUIDE.md`](./src/ingestors/rule-based/GUIDE.md) to quickly add new bank layouts.
+1. **JPMorgan Chase**:
+   - Checking & Savings statements (`Chase Total Checking`, `Chase Savings` in consolidated multi-account statements)
+   - Credit Card statements (`Chase Freedom Unlimited`, `Sapphire`, `Ink`, etc.)
+2. **Bank of America**:
+   - Checking & Savings statements with category subtables (`Deposits`, `Other Subtractions`, `Checks`) and multi-line descriptions
+3. **Capital One**:
+   - Credit Card statements (`Venture X Card`, `Quicksilver`, `Savor`, etc.) with **multi-cardholder / authorized user transaction segmentation**
+4. **Local Tesseract.js OCR**:
+   - Offline pure JS/WASM OCR for image statements (`.png`, `.jpg`, `.jpeg`, `.tiff`) and scanned PDFs
+5. **Direct Multimodal AI Ingestor**:
+   - Optional Gemini Flash ingestion (`--ai`) for unsupported banks or photos of paper receipts/bills
 
 ---
 
@@ -69,10 +70,10 @@ import fs from 'fs';
 
 const pdfBuffer = fs.readFileSync('statement.pdf');
 
-// 1. Parse statement (digital, scanned with OCR, or AI)
-const statement = await parseStatement(pdfBuffer, { useOcr: false });
+// 1. Parse statement (bank, credit card, OCR, or AI)
+const statement = await parseStatement(pdfBuffer);
 
-console.log(statement.institution); // "JPMorgan Chase Bank, N.A."
+console.log(statement.institution); // "Capital One, N.A."
 console.log(statement.accounts[0].reconciliation?.isBalanced); // true
 
 // 2. Export to CSV

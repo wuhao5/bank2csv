@@ -1,15 +1,20 @@
 import type { BankParser } from './base.js';
 import type { BankStatement, ExtractedPdfDocument } from '../../core/types.js';
 import { ChaseBankParser } from './parsers/chase.js';
+import { ChaseCreditCardParser } from './parsers/chase-credit-card.js';
 import { BofABankParser } from './parsers/bofa.js';
+import { CapitalOneCreditCardParser } from './parsers/capital-one.js';
 
 export class BankRouter {
   private parsers: BankParser[] = [];
 
   constructor() {
-    // Register built-in parsers
+    // Register built-in bank statement parsers (checking/savings and credit cards)
+    // Note: Credit card parsers are checked first for card-specific statements
+    this.register(new ChaseCreditCardParser());
     this.register(new ChaseBankParser());
     this.register(new BofABankParser());
+    this.register(new CapitalOneCreditCardParser());
   }
 
   /**
