@@ -1,6 +1,11 @@
 name: Publish to NPM
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
   workflow_dispatch:
     inputs:
       bump:
@@ -32,17 +37,63 @@ jobs:
       - name: Verify authorization
         run: |
           echo "Triggered by: ${{ github.actor }}"
-          echo "Authorized to publish."
+          echo "Event: ${{ github.event_name }}"
 
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Check for version bump
+        id: check_version
+        run: |
+          node -e "
+          const fs = require('fs');
+          const { execSync } = require('child_process');
+          const isPush = '${{ github.event_name }}' === 'push';
+          const currVersion = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version || '';
+          
+          let shouldPublish = true;
+          let prevVersion = '';
+          
+          if (isPush) {
+            let beforeSha = '${{ github.event.before }}';
+            if (!beforeSha || beforeSha === '0000000000000000000000000000000000000000') {
+              beforeSha = 'HEAD~1';
+            }
+            try {
+              const content = execSync('git show ' + beforeSha + ':package.json', { stdio: ['pipe', 'pipe', 'ignore'] }).toString();
+              prevVersion = JSON.parse(content).version || '';
+            } catch (e) {
+              console.log('Could not fetch previous package.json from ' + beforeSha);
+            }
+            
+            console.log('Push event detected:');
+            console.log('  Previous version:', prevVersion || '<none>');
+            console.log('  Current version: ', currVersion);
+            
+            if (prevVersion && prevVersion === currVersion) {
+              console.log('No version bump detected in package.json. Skipping publish.');
+              shouldPublish = false;
+            } else {
+              console.log('Version bump detected: ' + (prevVersion || '<none>') + ' -> ' + currVersion);
+              shouldPublish = true;
+            }
+          } else {
+            console.log('Manual dispatch detected with current version:', currVersion);
+            shouldPublish = true;
+          }
+          
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'should_publish=' + shouldPublish + '\n');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'current_version=' + currVersion + '\n');
+          "
+
       - name: Install pnpm
+        if: steps.check_version.outputs.should_publish == 'true'
         uses: pnpm/action-setup@v4
 
       - name: Set up Node.js
+        if: steps.check_version.outputs.should_publish == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -50,35 +101,47 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
+        if: steps.check_version.outputs.should_publish == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Run Tests
+        if: steps.check_version.outputs.should_publish == 'true'
         run: pnpm test
 
       - name: Run Build
+        if: steps.check_version.outputs.should_publish == 'true'
         run: pnpm build
 
       - name: Configure Git
-        if: ${{ inputs.bump != 'none' && !inputs.dry_run }}
+        if: ${{ steps.check_version.outputs.should_publish == 'true' && ((github.event_name == 'workflow_dispatch' && inputs.bump != 'none' && !inputs.dry_run) || github.event_name == 'push') }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump Version & Push Tag
-        if: ${{ inputs.bump != 'none' && !inputs.dry_run }}
+      - name: Bump Version & Push Tag (Manual Dispatch)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.bump != 'none' && !inputs.dry_run }}
         run: |
           pnpm version ${{ inputs.bump }} -m "chore(release): %s [skip ci]"
           git push --follow-tags
 
+      - name: Push Git Tag (Push Trigger)
+        if: ${{ github.event_name == 'push' && steps.check_version.outputs.should_publish == 'true' }}
+        run: |
+          VERSION="${{ steps.check_version.outputs.current_version }}"
+          TAG="v$VERSION"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists."
+          else
+            echo "Creating and pushing tag $TAG"
+            git tag -a "$TAG" -m "Release $TAG"
+            git push origin "$TAG"
+          fi
+
       - name: Dry-run Publish
-        if: ${{ inputs.dry_run }}
+        if: ${{ steps.check_version.outputs.should_publish == 'true' && inputs.dry_run == true }}
         run: pnpm publish --dry-run --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to NPM
-        if: ${{ !inputs.dry_run }}
+        if: ${{ steps.check_version.outputs.should_publish == 'true' && inputs.dry_run != true }}
         run: pnpm publish --access public --no-git-checks --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
