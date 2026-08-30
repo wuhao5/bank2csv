@@ -8,16 +8,6 @@ on:
       - 'package.json'
   workflow_dispatch:
     inputs:
-      bump:
-        description: 'Version bump type (patch, minor, major) or none'
-        required: true
-        default: 'patch'
-        type: choice
-        options:
-          - none
-          - patch
-          - minor
-          - major
       dry_run:
         description: 'Dry run (pack and validate without publishing)'
         required: false
@@ -112,20 +102,8 @@ jobs:
         if: steps.check_version.outputs.should_publish == 'true'
         run: pnpm build
 
-      - name: Configure Git
-        if: ${{ steps.check_version.outputs.should_publish == 'true' && ((github.event_name == 'workflow_dispatch' && inputs.bump != 'none' && !inputs.dry_run) || github.event_name == 'push') }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Bump Version & Push Tag (Manual Dispatch)
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.bump != 'none' && !inputs.dry_run }}
-        run: |
-          pnpm version ${{ inputs.bump }} -m "chore(release): %s [skip ci]"
-          git push --follow-tags
-
-      - name: Push Git Tag (Push Trigger)
-        if: ${{ github.event_name == 'push' && steps.check_version.outputs.should_publish == 'true' }}
+      - name: Tag Version
+        if: ${{ steps.check_version.outputs.should_publish == 'true' && !inputs.dry_run }}
         run: |
           VERSION="${{ steps.check_version.outputs.current_version }}"
           TAG="v$VERSION"
@@ -133,6 +111,8 @@ jobs:
             echo "Tag $TAG already exists."
           else
             echo "Creating and pushing tag $TAG"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
             git tag -a "$TAG" -m "Release $TAG"
             git push origin "$TAG"
           fi
