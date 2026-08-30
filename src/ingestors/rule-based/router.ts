@@ -4,6 +4,7 @@ import { ChaseBankParser } from './parsers/chase.js';
 import { ChaseCreditCardParser } from './parsers/chase-credit-card.js';
 import { BofABankParser } from './parsers/bofa.js';
 import { CapitalOneCreditCardParser } from './parsers/capital-one.js';
+import { AllyBankParser } from './parsers/ally.js';
 
 export class BankRouter {
   private parsers: BankParser[] = [];
@@ -15,6 +16,7 @@ export class BankRouter {
     this.register(new ChaseBankParser());
     this.register(new BofABankParser());
     this.register(new CapitalOneCreditCardParser());
+    this.register(new AllyBankParser());
   }
 
   /**

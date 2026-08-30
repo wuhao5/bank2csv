@@ -143,3 +143,76 @@ BOB SMITH #9999: Transactions
 Trans Date Post Date Description Amount
 Jul 25 Jul 26 HARDWARE STORE $1,000.00`
 ]);
+
+export const mockAllyStatementDocument: ExtractedPdfDocument = createMockDoc([
+  `COMBINED CUSTOMER STATEMENT
+Ally Bank
+Statement Date 08/15/2026
+Page 1
+Customer Care Information
+Toll Free 877-247-ALLY (2559)
+www.ally.com
+ACME TEST USER
+100 MAIN STREET
+ANYTOWN CA 94000
+CUSTOMER STATEMENT
+Account Name Account Number Beginning Balance Ending Balance
+Interest Checking xxxxxx1234 $1,000.00 $1,500.00
+Online Savings Account xxxxxx5678 $10,000.00 $12,050.00
+Total Account Balances: $11,000.00 $13,550.00
+Ally Bank Member FDIC STMTCMB100 05/2013`,
+
+  `COMBINED CUSTOMER STATEMENT
+Statement Date
+08/15/2026
+Page 2
+Customer Care Information
+Toll Free 877-247-ALLY (2559)
+Interest Checking www.ally.com
+Summary For: ACME TEST USER
+Account Number: xxxxxx1234 Open Date: 01/15/2021
+Product: Interest Checking Account Ownership: Individual
+Summary
+Beginning Balance, as of 07/16/2026 $1,000.00 Days In Statement Period 31
+Deposits and Other Credits $1,200.00 Annual Percentage Yield Earned 0.10%
+Interest Paid This Period $0.50 Average Daily Balance This Period $1,200.00
+Withdrawals and Other Debits -$700.50
+Ending Balance, as of 08/15/2026 $1,500.00
+Activity
+Date Description Credits Debits Balance
+07/16/2026 Beginning Balance $1,000.00
+07/20/2026 Direct Deposit $1,200.00 -$0.00 $2,200.00
+EMPLOYER PAYROLL DIRECT DEPOSIT
+07/25/2026 ACH Withdrawal $0.00 -$200.50 $1,999.50
+ELECTRIC UTILITY BILL
+08/01/2026 Check $0.00 -$500.00 $1,499.50
+Check Paid #101
+08/15/2026 Interest Paid $0.50 -$0.00 $1,500.00
+08/15/2026 Ending Balance $1,500.00
+Ally Bank Member FDIC STMTCMB100 05/2013`,
+
+  `COMBINED CUSTOMER STATEMENT
+Statement Date
+08/15/2026
+Page 3
+Customer Care Information
+Toll Free 877-247-ALLY (2559)
+Online Savings Account www.ally.com
+Summary For: ACME TEST USER
+Account Number: xxxxxx5678 Open Date: 01/15/2021
+Product: Online Savings Account Account Ownership: Individual
+Summary
+Beginning Balance, as of 07/16/2026 $10,000.00 Days In Statement Period 31
+Deposits and Other Credits $2,000.00 Annual Percentage Yield Earned 0.50%
+Interest Paid This Period $50.00 Average Daily Balance This Period $11,000.00
+Withdrawals and Other Debits $0.00
+Ending Balance, as of 08/15/2026 $12,050.00
+Activity
+Date Description Credits Debits Balance
+07/16/2026 Beginning Balance $10,000.00
+07/18/2026 ACH Deposit $2,000.00 -$0.00 $12,000.00
+EXTERNAL TRANSFER FROM MAIN CHECKING
+08/15/2026 Interest Paid $50.00 -$0.00 $12,050.00
+08/15/2026 Ending Balance $12,050.00
+Ally Bank Member FDIC STMTCMB100 05/2013`
+]);

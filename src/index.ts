@@ -18,6 +18,7 @@ export * from './ingestors/rule-based/parsers/chase.js';
 export * from './ingestors/rule-based/parsers/chase-credit-card.js';
 export * from './ingestors/rule-based/parsers/bofa.js';
 export * from './ingestors/rule-based/parsers/capital-one.js';
+export * from './ingestors/rule-based/parsers/ally.js';
 export * from './ingestors/ai-direct/gemini.js';
 export * from './exporters/csv-unified.js';
 export * from './exporters/presets.js';

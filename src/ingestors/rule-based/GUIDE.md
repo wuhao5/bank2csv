@@ -158,25 +158,27 @@ export class BankRouter {
 
 ---
 
-### Step 4: Write Automated Tests (`test/parsers/<bank>.test.ts`)
+### Step 4: Write Automated Tests (`test/<bank>-parser.test.ts`)
 
-Create a test validating sample parsing and 100% balance reconciliation:
+> [!WARNING]
+> **Data Privacy**: PDFs in `samples/` may contain personal data and must **NEVER** be committed or referenced in automated unit tests. Instead, create synthetic, anonymized `ExtractedPdfDocument` fixtures in `test/fixtures/mock-documents.ts`.
+
+Create a unit test validating parsing and 100% balance reconciliation using mock fixtures:
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import fs from 'fs';
-import { extractPdfDocument } from '../../src/core/pdf-extractor.js';
-import { YourBankParser } from '../../src/ingestors/rule-based/parsers/yourbank.js';
+import { YourBankParser } from '../src/ingestors/rule-based/parsers/yourbank.js';
+import { mockYourBankDocument } from './fixtures/mock-documents.js';
 
 describe('YourBankParser', () => {
-  it('correctly parses statement and reconciles balances with 0 discrepancy', async () => {
-    const buf = fs.readFileSync('samples/your_sample.pdf');
-    const doc = await extractPdfDocument(buf);
-    const parser = new YourBankParser();
+  const parser = new YourBankParser();
 
-    expect(parser.canHandle(doc)).toBe(true);
+  it('canHandle returns true for Your Bank statements', () => {
+    expect(parser.canHandle(mockYourBankDocument)).toBe(true);
+  });
 
-    const statement = parser.parse(doc);
+  it('correctly parses statement and reconciles balances with 0 discrepancy', () => {
+    const statement = parser.parse(mockYourBankDocument);
     expect(statement.institution).toBe('Your Bank Name, N.A.');
     expect(statement.accounts.length).toBeGreaterThanOrEqual(1);
 
