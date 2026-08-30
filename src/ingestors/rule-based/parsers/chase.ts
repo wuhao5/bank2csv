@@ -90,7 +90,7 @@ export class ChaseBankParser implements BankParser {
     // Chase Total Checking 000000123456789 $25,123.45 $28,456.78
     // Chase Savings 000000123456789 $5,000.00 $5,000.00
     const accountRowRegex =
-      /^(Chase\s+[A-Za-z\s]+?)\s+(\d{9,17})\s+([-\$\s]*[\d,]+\.\d{2})\s+([-\$\s]*[\d,]+\.\d{2})/gim;
+      /^(Chase\s+[A-Za-z\s]+?)\s+(\d{9,17})\s+([-$s]*[\d,]+\.\d{2})\s+([-$s]*[\d,]+\.\d{2})/gim;
 
     let match: RegExpExecArray | null;
     while ((match = accountRowRegex.exec(text)) !== null) {
@@ -118,7 +118,7 @@ export class ChaseBankParser implements BankParser {
 
   private extractAccountDetails(text: string, accounts: BankAccount[]): void {
     const detailsRegex =
-      /(?:CHECKING|SAVINGS)\s+SUMMARY[\s\S]*?Beginning Balance\s+([-\$\s]*[\d,]+\.\d{2})[\s\S]*?Ending Balance\s+([-\$\s]*[\d,]+\.\d{2})/gim;
+      /(?:CHECKING|SAVINGS)\s+SUMMARY[\s\S]*?Beginning Balance\s+([-$s]*[\d,]+\.\d{2})[\s\S]*?Ending Balance\s+([-$s]*[\d,]+\.\d{2})/gim;
 
     let match: RegExpExecArray | null;
     let i = 0;
@@ -145,10 +145,10 @@ export class ChaseBankParser implements BankParser {
     let openBal: number | undefined;
     let closeBal: number | undefined;
 
-    const beginMatch = text.match(/Beginning Balance\s+([-\$\s]*[\d,]+\.\d{2})/i);
+    const beginMatch = text.match(/Beginning Balance\s+([-$s]*[\d,]+\.\d{2})/i);
     if (beginMatch) openBal = this.parseCurrency(beginMatch[1]);
 
-    const endMatch = text.match(/Ending Balance\s+([-\$\s]*[\d,]+\.\d{2})/i);
+    const endMatch = text.match(/Ending Balance\s+([-$s]*[\d,]+\.\d{2})/i);
     if (endMatch) closeBal = this.parseCurrency(endMatch[1]);
 
     const isChecking = text.includes('CHECKING');
@@ -200,7 +200,7 @@ export class ChaseBankParser implements BankParser {
           // Transaction Line Regex: "MM/DD DESCRIPTION AMOUNT BALANCE"
           // E.g. "07/17 SAMPLE EMPLOYER PAYROLL 200.00 5,200.00"
           const txMatch = line.match(
-            /^(\d{2}\/\d{2})\s+(.+?)\s+([-\$\s]*[\d,]+\.\d{2})\s+([-\$\s]*[\d,]+\.\d{2})$/
+            /^(\d{2}\/\d{2})\s+(.+?)\s+([-$s]*[\d,]+\.\d{2})\s+([-$s]*[\d,]+\.\d{2})$/
           );
 
           if (txMatch) {
@@ -212,9 +212,6 @@ export class ChaseBankParser implements BankParser {
 
             const amount = this.parseCurrency(amtStr);
             const runningBalance = this.parseCurrency(balStr);
-
-            // In Chase statement, subtractions are marked with negative sign or inferred
-            const isDebit = amount < 0 || desc.toLowerCase().includes('withdrawal') || desc.toLowerCase().includes('debit');
 
             currentAccount.transactions.push({
               date: isoDate,
@@ -232,7 +229,7 @@ export class ChaseBankParser implements BankParser {
 
   private parseCurrency(val: string): number {
     const isNegative = val.includes('-') || val.startsWith('(');
-    const cleaned = val.replace(/[\$\(\),\s\+-]/g, '').trim();
+    const cleaned = val.replace(/[$(),\s+-]/g, '').trim();
     const num = parseFloat(cleaned);
     return isNegative ? -num : num;
   }

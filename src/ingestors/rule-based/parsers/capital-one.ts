@@ -2,7 +2,6 @@ import type { BankParser } from '../base.js';
 import type {
   BankStatement,
   BankAccount,
-  BankTransaction,
   ExtractedPdfDocument
 } from '../../../core/types.js';
 import { reconcileStatementAccounts } from '../../../core/reconciler.js';
@@ -29,7 +28,7 @@ export class CapitalOneCreditCardParser implements BankParser {
     const { periodStart, periodEnd, startYear, endYear } = this.extractPeriod(fullText);
 
     // 2. Extract Account Summary & Balances
-    const account = this.extractAccountSummary(fullText, doc);
+    const account = this.extractAccountSummary(fullText);
 
     // 3. Extract Multi-Cardholder Transactions
     this.extractTransactions(doc, account, startYear, endYear);
@@ -73,7 +72,7 @@ export class CapitalOneCreditCardParser implements BankParser {
     return { startYear: currentYear, endYear: currentYear };
   }
 
-  private extractAccountSummary(text: string, doc: ExtractedPdfDocument): BankAccount {
+  private extractAccountSummary(text: string): BankAccount {
     // Product Name
     let accountName = 'Capital One Credit Card';
     const prodMatch = text.match(/(?:Page\s+\d+\s+of\s+\d+\s+)?([A-Za-z0-9\s]+Card)\s*\|\s*Visa/i);
@@ -161,7 +160,7 @@ export class CapitalOneCreditCardParser implements BankParser {
         // Transaction line regex:
         // Format: "MMM DD MMM DD DESCRIPTION AMOUNT"
         const txMatch = line.match(
-          /^([A-Za-z]{3})\s+(\d{1,2})\s+([A-Za-z]{3})\s+(\d{1,2})\s+(.+?)\s+([-\$]?[\d,]+\.\d{2})$/
+          /^([A-Za-z]{3})\s+(\d{1,2})\s+([A-Za-z]{3})\s+(\d{1,2})\s+(.+?)\s+([-$]?[\d,]+\.\d{2})$/
         );
 
         if (txMatch) {

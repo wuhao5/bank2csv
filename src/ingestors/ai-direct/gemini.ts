@@ -85,25 +85,25 @@ Analyze this bank statement PDF/document and extract all financial data accurate
     statementDate: parsedJson.statementDate,
     periodStart: parsedJson.periodStart,
     periodEnd: parsedJson.periodEnd,
-    accounts: (parsedJson.accounts || []).map((acc: any) => ({
-      accountName: acc.accountName || 'Bank Account',
-      accountNumberMasked: acc.accountNumberMasked || 'UNKNOWN',
-      accountType: acc.accountType || 'CHECKING',
-      currency: acc.currency || 'USD',
-      openingBalance: acc.openingBalance,
-      closingBalance: acc.closingBalance,
-      totalDeposits: acc.totalDeposits,
-      totalWithdrawals: acc.totalWithdrawals,
-      transactions: (acc.transactions || []).map((tx: any) => ({
-        date: tx.date,
-        postDate: tx.postDate,
-        description: tx.description,
-        rawDescription: tx.rawDescription,
+    accounts: (parsedJson.accounts || []).map((acc: Record<string, unknown>) => ({
+      accountName: (acc.accountName as string) || 'Bank Account',
+      accountNumberMasked: (acc.accountNumberMasked as string) || 'UNKNOWN',
+      accountType: (acc.accountType as 'CHECKING' | 'SAVINGS' | 'CREDIT_CARD' | 'OTHER') || 'CHECKING',
+      currency: (acc.currency as string) || 'USD',
+      openingBalance: acc.openingBalance as number | undefined,
+      closingBalance: acc.closingBalance as number | undefined,
+      totalDeposits: acc.totalDeposits as number | undefined,
+      totalWithdrawals: acc.totalWithdrawals as number | undefined,
+      transactions: ((acc.transactions as Record<string, unknown>[]) || []).map((tx) => ({
+        date: tx.date as string,
+        postDate: tx.postDate as string | undefined,
+        description: tx.description as string,
+        rawDescription: tx.rawDescription as string | undefined,
         amount: Number(tx.amount),
         type: tx.type === 'DEBIT' || Number(tx.amount) < 0 ? ('DEBIT' as const) : ('CREDIT' as const),
-        checkNumber: tx.checkNumber,
-        runningBalance: tx.runningBalance,
-        category: tx.category
+        checkNumber: tx.checkNumber as string | undefined,
+        runningBalance: tx.runningBalance as number | undefined,
+        category: tx.category as string | undefined
       }))
     }))
   };

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { BankStatement, CsvPreset, ExtractedPdfDocument } from './core/types.js';
 import { extractPdfDocument } from './core/pdf-extractor.js';
-import { extractDocumentFromImages, extractTextFromImage, isScannedOrImageOnly } from './core/ocr-extractor.js';
+import { extractDocumentFromImages, isScannedOrImageOnly } from './core/ocr-extractor.js';
 import { defaultRouter, BankRouter } from './ingestors/rule-based/router.js';
 import { parseStatementWithGemini, type GeminiIngestorOptions } from './ingestors/ai-direct/gemini.js';
 import { exportToUnifiedCsv } from './exporters/csv-unified.js';

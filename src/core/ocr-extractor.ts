@@ -42,7 +42,13 @@ export async function extractTextFromImage(
   const buffer = imageBuffer instanceof Buffer ? imageBuffer : Buffer.from(imageBuffer);
 
   const result = await worker.recognize(buffer);
-  const data = result.data as any;
+
+  interface OcrLine {
+    text?: string;
+    bbox?: { x0: number; y0: number; x1: number; y1: number };
+  }
+
+  const data = result.data as { lines?: OcrLine[]; text?: string };
 
   const lines: string[] = [];
   const items: ExtractedTextItem[] = [];

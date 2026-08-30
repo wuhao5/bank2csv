@@ -13,6 +13,16 @@ program
   .description('TypeScript Bank Statement Parser to CSV with multi-account, OCR & AI support')
   .version('1.0.0');
 
+interface CliParseOptions {
+  output: string;
+  preset: string;
+  unified?: string;
+  depth?: number;
+  ocr?: boolean;
+  ai?: boolean;
+  verbose?: boolean;
+}
+
 program
   .command('parse')
   .description('Parse bank statement PDF or image files into CSV transaction lists')
@@ -47,7 +57,7 @@ program
   .option('--ocr', 'Force local Tesseract.js OCR extraction on image statements', false)
   .option('--ai', 'Use Direct Multimodal AI Ingestion (requires GEMINI_API_KEY)', false)
   .option('-v, --verbose', 'Print verbose debug & reconciliation logs', false)
-  .action(async (targetPath: string, options: any) => {
+  .action(async (targetPath: string, options: CliParseOptions) => {
     let unifiedWriter: StatementCsvWriter | null = null;
     let unifiedOutPath = '';
     try {
@@ -137,12 +147,13 @@ program
 
       await terminateOcrWorker();
       console.log(`🎉 All statements successfully processed and saved to ${outputDir}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (unifiedWriter) {
         unifiedWriter.close();
       }
       await terminateOcrWorker();
-      console.error(`\n❌ Error:`, err.message || err);
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`\n❌ Error:`, message);
       process.exit(1);
     }
   });

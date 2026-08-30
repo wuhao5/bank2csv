@@ -2,7 +2,6 @@ import type { BankParser } from '../base.js';
 import type {
   BankStatement,
   BankAccount,
-  BankTransaction,
   ExtractedPdfDocument
 } from '../../../core/types.js';
 import { reconcileStatementAccounts } from '../../../core/reconciler.js';
@@ -25,13 +24,13 @@ export class BofABankParser implements BankParser {
     const fullText = doc.fullText;
 
     // 1. Extract Statement Period
-    const { periodStart, periodEnd, startYear, endYear } = this.extractPeriod(fullText);
+    const { periodStart, periodEnd } = this.extractPeriod(fullText);
 
     // 2. Extract Account Summary & Balances
-    const account = this.extractAccountSummary(fullText, doc);
+    const account = this.extractAccountSummary(fullText);
 
     // 3. Extract Transactions across subtables
-    this.extractTransactions(doc, account, startYear, endYear);
+    this.extractTransactions(doc, account);
 
     const reconciledAccounts = reconcileStatementAccounts([account]);
 
@@ -76,7 +75,7 @@ export class BofABankParser implements BankParser {
     return { startYear: currentYear, endYear: currentYear };
   }
 
-  private extractAccountSummary(text: string, doc: ExtractedPdfDocument): BankAccount {
+  private extractAccountSummary(text: string): BankAccount {
     // Product Name (e.g. "Your Adv Plus Banking", "Core Checking")
     let accountName = 'Adv Plus Banking';
     const prodMatch = text.match(/Your\s+([A-Za-z0-9\s]+?Banking)/i);
@@ -94,23 +93,23 @@ export class BofABankParser implements BankParser {
     let totalDeposits: number | undefined;
     let totalWithdrawals: number | undefined;
 
-    const beginMatch = text.match(/Beginning balance on\s+[A-Za-z0-9,\s]+\$([-\$\s]*[\d,]+\.\d{2})/i);
+    const beginMatch = text.match(/Beginning balance on\s+[A-Za-z0-9,\s]+\$([-$s]*[\d,]+\.\d{2})/i);
     if (beginMatch) {
       openingBalance = this.parseCurrency(beginMatch[1]);
     }
 
-    const endMatch = text.match(/Ending balance on\s+[A-Za-z0-9,\s]+\$([-\$\s]*[\d,]+\.\d{2})/i);
+    const endMatch = text.match(/Ending balance on\s+[A-Za-z0-9,\s]+\$([-$s]*[\d,]+\.\d{2})/i);
     if (endMatch) {
       closingBalance = this.parseCurrency(endMatch[1]);
     }
 
-    const depMatch = text.match(/Deposits and other additions\s+([-\$\s]*[\d,]+\.\d{2})/i);
+    const depMatch = text.match(/Deposits and other additions\s+([-$s]*[\d,]+\.\d{2})/i);
     if (depMatch) {
       totalDeposits = this.parseCurrency(depMatch[1]);
     }
 
-    const subMatch = text.match(/Other subtractions\s+([-\$\s]*[\d,]+\.\d{2})/i);
-    const checksMatch = text.match(/Checks\s+([-\$\s]*[\d,]+\.\d{2})/i);
+    const subMatch = text.match(/Other subtractions\s+([-$s]*[\d,]+\.\d{2})/i);
+    const checksMatch = text.match(/Checks\s+([-$s]*[\d,]+\.\d{2})/i);
 
     let totalSub = 0;
     if (subMatch) totalSub += Math.abs(this.parseCurrency(subMatch[1]));
@@ -132,9 +131,7 @@ export class BofABankParser implements BankParser {
 
   private extractTransactions(
     doc: ExtractedPdfDocument,
-    account: BankAccount,
-    startYear: number,
-    endYear: number
+    account: BankAccount
   ): void {
     type Section = 'NONE' | 'DEPOSITS' | 'SUBTRACTIONS' | 'CHECKS' | 'FEES';
     let currentSection: Section = 'NONE';
@@ -211,11 +208,11 @@ export class BofABankParser implements BankParser {
 
         // 1. Checks Table: "MM/DD/YY CHECK# AMOUNT"
         if (currentSection === 'CHECKS') {
-          const checkMatch = line.match(/^(\d{2}\/\d{2}\/\d{2})\s+(\d+)\s+([-\$\s]*[\d,]+\.\d{2})/);
+          const checkMatch = line.match(/^(\d{2}\/\d{2}\/\d{2})\s+(\d+)\s+([-$s]*[\d,]+\.\d{2})/);
           if (checkMatch) {
             flushPending();
             const [, dStr, chkNum, amtStr] = checkMatch;
-            const iso = this.formatBofADate(dStr, startYear, endYear);
+            const iso = this.formatBofADate(dStr);
             const amount = Math.abs(this.parseCurrency(amtStr));
 
             account.transactions.push({
@@ -232,11 +229,11 @@ export class BofABankParser implements BankParser {
         }
 
         // 2. Deposits or Subtractions Table: "MM/DD/YY DESCRIPTION AMOUNT"
-        const txMatch = line.match(/^(\d{2}\/\d{2}\/\d{2})\s+(.+?)\s+([-\$\s]*[\d,]+\.\d{2})$/);
+        const txMatch = line.match(/^(\d{2}\/\d{2}\/\d{2})\s+(.+?)\s+([-$s]*[\d,]+\.\d{2})$/);
         if (txMatch) {
           flushPending();
           const [, dStr, desc, amtStr] = txMatch;
-          const iso = this.formatBofADate(dStr, startYear, endYear);
+          const iso = this.formatBofADate(dStr);
           const amount = Math.abs(this.parseCurrency(amtStr));
           const isCredit = currentSection === 'DEPOSITS';
 
@@ -255,7 +252,7 @@ export class BofABankParser implements BankParser {
     }
   }
 
-  private formatBofADate(dStr: string, startYear: number, endYear: number): string {
+  private formatBofADate(dStr: string): string {
     const [mm, dd, yy] = dStr.split('/');
     const year = parseInt(yy, 10) < 50 ? 2000 + parseInt(yy, 10) : 1900 + parseInt(yy, 10);
     return `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
@@ -263,7 +260,7 @@ export class BofABankParser implements BankParser {
 
   private parseCurrency(val: string): number {
     const isNegative = val.includes('-') || val.startsWith('(');
-    const cleaned = val.replace(/[\$\(\),\s\+-]/g, '').trim();
+    const cleaned = val.replace(/[$(),\s+-]/g, '').trim();
     const num = parseFloat(cleaned);
     return isNegative ? -num : num;
   }
