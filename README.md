@@ -36,6 +36,12 @@ pnpm build
 # Parse all PDFs/images in a directory and generate unified CSVs
 pnpm start parse ./samples --output ./out
 
+# Recursively search all subdirectories for statement files
+pnpm start parse ./samples -d --output ./out
+
+# Search with limited depth (e.g. 1 subdirectory level)
+pnpm start parse ./samples --depth 1 --output ./out
+
 # Split multi-account statements into individual per-account CSVs
 pnpm start parse ./samples --output ./out --split
 
@@ -56,6 +62,7 @@ pnpm start parse ./samples --output ./out --ai
 | `-o, --output <dir>` | Directory to save generated CSV files | `./output` |
 | `-p, --preset <preset>` | CSV format: `standard` \| `ynab` \| `quickbooks` | `standard` |
 | `-s, --split` | Generate separate CSV files for each bank account | `false` |
+| `-d, --depth [number]` | Search subdirectories (`-d` for unlimited depth, or specify number e.g. `--depth 1`) | `0` (top-level only) |
 | `--ocr` | Run local Tesseract.js OCR on scanned image statements | `false` |
 | `--ai` | Use Direct Multimodal AI Ingestion | `false` |
 | `-v, --verbose` | Show verbose reconciliation diagnostics | `false` |

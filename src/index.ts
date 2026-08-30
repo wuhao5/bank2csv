@@ -12,6 +12,7 @@ export * from './core/types.js';
 export * from './core/reconciler.js';
 export * from './core/pdf-extractor.js';
 export * from './core/ocr-extractor.js';
+export * from './core/file-utils.js';
 export * from './ingestors/rule-based/base.js';
 export * from './ingestors/rule-based/router.js';
 export * from './ingestors/rule-based/parsers/chase.js';

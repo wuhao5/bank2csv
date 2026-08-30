@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { Command } from 'commander';
+import { Command, Option, InvalidArgumentError } from 'commander';
 import fs from 'fs';
 import path from 'path';
-import { parseStatement, terminateOcrWorker } from './index.js';
+import { parseStatement, terminateOcrWorker, collectFiles } from './index.js';
 import { exportToUnifiedCsv } from './exporters/csv-unified.js';
 import { exportToSplitCsv } from './exporters/csv-split.js';
 import type { CsvPreset } from './core/types.js';
@@ -19,8 +19,27 @@ program
   .description('Parse bank statement PDF or image files into CSV transaction lists')
   .argument('<path>', 'PDF/image file or directory containing statement files')
   .option('-o, --output <dir>', 'Directory to save output CSV files', './output')
-  .option('-p, --preset <preset>', 'CSV preset format (standard, ynab, quickbooks)', 'standard')
+  .addOption(
+    new Option('-p, --preset <preset>', 'CSV preset format (standard, ynab, quickbooks)')
+      .choices(['standard', 'ynab', 'quickbooks'])
+      .default('standard')
+  )
   .option('-s, --split', 'Generate separate CSV files for each bank account in multi-account statements', false)
+  .addOption(
+    new Option(
+      '-d, --depth [number]',
+      'Subdirectory search depth (omit number or pass -d for unlimited recursion)'
+    )
+      .preset('infinity')
+      .argParser((val: string) => {
+        if (val === 'infinity') return Infinity;
+        const parsed = parseInt(val, 10);
+        if (isNaN(parsed) || parsed < 0) {
+          throw new InvalidArgumentError('Must be a non-negative integer.');
+        }
+        return parsed;
+      })
+  )
   .option('--ocr', 'Force local Tesseract.js OCR extraction on image statements', false)
   .option('--ai', 'Use Direct Multimodal AI Ingestion (requires GEMINI_API_KEY)', false)
   .option('-v, --verbose', 'Print verbose debug & reconciliation logs', false)
@@ -29,16 +48,10 @@ program
       const isDir = fs.existsSync(targetPath) && fs.statSync(targetPath).isDirectory();
       const filesToProcess: string[] = [];
 
-      const validExts = ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.webp', '.bmp'];
+      const maxDepth = options.depth ?? 0;
 
       if (isDir) {
-        const entries = fs.readdirSync(targetPath);
-        for (const file of entries) {
-          const ext = path.extname(file).toLowerCase();
-          if (validExts.includes(ext)) {
-            filesToProcess.push(path.join(targetPath, file));
-          }
-        }
+        filesToProcess.push(...collectFiles(targetPath, undefined, maxDepth));
       } else if (fs.existsSync(targetPath)) {
         filesToProcess.push(targetPath);
       } else {
